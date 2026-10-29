@@ -1,0 +1,21 @@
+{
+  "name": "portfolio-dashboard",
+  "version": "1.0.0",
+  "description": "Local investment watchlist dashboard: TradingView data + Lightweight Charts",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node server.js --demo"
+  },
+  "dependencies": {
+    "@mathieuc/tradingview": "^4.1.0",
+    "express": "^5.3.0",
+    "lightweight-charts": "^5.2.1",
+    "ws": "^8.22.0"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  }
+}
