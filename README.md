@@ -31,6 +31,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Candle width**: the slider next to the interval switch sets how wide candles are on every chart, so they always match across tiles.
   It steps from 1 px to 15 px per candle (default 5 px). Slide right for wider candles (fewer on screen) and left for narrower ones (more history). Double-click the slider to reset it.
   Drag left in a chart to see older candles. Because trading hours differ, the same number of hourly or 4-hour candles covers a different stretch of calendar time for a Taiwan stock or a crypto pair than for a US stock.
+- **Sort**: the sort button left of the interval switch orders tiles by ticker. Click it to switch between A–Z and Z–A (numbers sort naturally, so 0050 comes before 2330).
+  New symbols go into their sorted place. Moving a tile yourself switches the button to Unsorted, and new symbols then go at the end.
 - **Reorder**: drag a tile by its header. Or focus the ⋮⋮ handle (with Tab) and press ← / →.
 - **Remove**: hover a tile and click ×.
 - **Inside a chart**: drag to pan and pinch to zoom that one chart. Double-click to reset it to the slider's width.
@@ -38,7 +40,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol.
 
-Your symbol list, their order, the candle interval and the candle width are saved in your browser.
+Your symbol list, their order, the sort setting, the candle interval and the candle width are saved in your browser.
 
 ## Real-time data (optional)
 

@@ -30,7 +30,14 @@ const ZOOM_MIN = 1, ZOOM_MAX = 15, ZOOM_DEFAULT = 5;
 const clampZoom = (px) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(Number(px) || ZOOM_DEFAULT)));
 state.zoom = clampZoom(store.get('pd.zoomPx', ZOOM_DEFAULT));
 
-const save = () => { store.set('pd.symbols', state.symbols); store.set('pd.tf', state.tf); store.set('pd.zoomPx', state.zoom); };
+// Sort order: 'asc' / 'desc' by ticker, or 'none' once the user arranges tiles themselves.
+const SORT_MODES = ['asc', 'desc', 'none'];
+state.sort = store.get('pd.sort', 'none');
+if (!SORT_MODES.includes(state.sort)) state.sort = 'none';
+
+const save = () => {
+  store.set('pd.symbols', state.symbols); store.set('pd.tf', state.tf); store.set('pd.zoomPx', state.zoom); store.set('pd.sort', state.sort);
+};
 save();
 
 const tiles = new Map(); // symbol -> Tile
@@ -309,7 +316,8 @@ function render() {
 
 function addSymbol(sym) {
   if (!state.symbols.includes(sym)) {
-    state.symbols.push(sym);
+    state.symbols.push(sym); // at the end when unsorted…
+    applySort(); // …or in its sorted place
     save();
     render();
     sendWatch();
@@ -330,10 +338,44 @@ function moveSymbol(sym, delta) {
   if (i === j) return;
   state.symbols.splice(i, 1);
   state.symbols.splice(j, 0, sym);
+  setSort('none');
   save();
   render();
   tiles.get(sym).ui.grip.focus();
 }
+
+// ------------------------------------------------------------ Sort
+const tickerCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+function compareSymbols(a, b) {
+  const [ea, ta] = splitSymbol(a), [eb, tb] = splitSymbol(b);
+  return tickerCollator.compare(ta, tb) || tickerCollator.compare(ea, eb);
+}
+function applySort() {
+  if (state.sort === 'none') return;
+  const dir = state.sort === 'asc' ? 1 : -1;
+  state.symbols.sort((a, b) => dir * compareSymbols(a, b));
+}
+const sortBtn = $('#sort');
+const SORT_UI = {
+  asc: { label: 'A–Z', aria: 'Sorted by ticker, A to Z. Activate to sort Z to A.' },
+  desc: { label: 'Z–A', aria: 'Sorted by ticker, Z to A. Activate to sort A to Z.' },
+  none: { label: 'Unsorted', aria: 'Unsorted: your own order. Activate to sort by ticker, A to Z.' },
+};
+function setSort(mode) {
+  state.sort = mode;
+  sortBtn.dataset.sort = mode;
+  $('span', sortBtn).textContent = SORT_UI[mode].label;
+  sortBtn.setAttribute('aria-label', SORT_UI[mode].aria);
+  sortBtn.title = SORT_UI[mode].aria;
+}
+sortBtn.addEventListener('click', () => {
+  setSort(state.sort === 'asc' ? 'desc' : 'asc');
+  applySort();
+  save();
+  render();
+});
+setSort(state.sort);
+applySort();
 
 // ------------------------------------------------------------ Drag to reorder
 let dragSym = null;
@@ -366,10 +408,12 @@ function setupDrag(tile) {
     if (!dragSym || dragSym === tile.symbol) return;
     e.preventDefault();
     const after = isAfter(e, el);
+    const before = state.symbols.join();
     const from = state.symbols.indexOf(dragSym);
     state.symbols.splice(from, 1);
     let to = state.symbols.indexOf(tile.symbol) + (after ? 1 : 0);
     state.symbols.splice(to, 0, dragSym);
+    if (state.symbols.join() !== before) setSort('none'); // the user's own arrangement
     save();
     clearDropMarks();
     render();
