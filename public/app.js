@@ -181,17 +181,23 @@ class Tile {
 
   setBars(bars, full) {
     if (full) {
+      // A fresh snapshot of the same interval (e.g. after a reconnect) keeps the user's pan position;
+      // a new interval, first load or recovery from an error starts at the latest candle.
+      const refresh = this.el.classList.contains('ready') && !this.el.classList.contains('switching');
       this.candleData = bars.map(toCandle);
       this.volumeData = bars.map(toVolume);
       this.lastTime = bars.at(-1)?.time ?? null;
       this.el.classList.remove('loading', 'error', 'switching');
       this.el.classList.add('ready');
-      this.view = null;
+      if (!refresh) this.view = null;
       if (this.chart) {
+        const ts = this.chart.timeScale();
+        const pos = refresh ? ts.scrollPosition() : null;
         this.chart.applyOptions({ timeScale: { timeVisible: isIntraday() } });
         this.candles.setData(this.candleData);
         this.volume.setData(this.volumeData);
-        this.fitRange();
+        if (refresh) ts.scrollToPosition(pos, false);
+        else this.fitRange();
       }
     } else if (this.lastTime != null) {
       for (const b of bars) {
