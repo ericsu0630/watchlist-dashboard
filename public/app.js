@@ -7,6 +7,7 @@ const COLORS = {
   up: '#34d3a0', down: '#ff6e7f', text: '#7d8aa3', grid: '#1b2638', cross: '#5b6a86', label: '#22304a', lastPrice: '#93a5ff',
   volUp: '#34d3a02e', volDown: '#ff6e7f2e', flashUp: '#34d3a033', flashDown: '#ff6e7f33',
 };
+const CHART_FONT = "'Barlow Semi Condensed', system-ui, sans-serif";
 const SESSION_LABELS = { market: 'Market open', pre_market: 'Pre-market', post_market: 'After hours', out_of_session: 'Market closed' };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const DEFAULTS = ['NASDAQ:AAPL', 'NASDAQ:NVDA', 'NASDAQ:MSFT', 'TWSE:2330', 'AMEX:SPY', 'NASDAQ:QQQ', 'BINANCE:BTCUSDT', 'BINANCE:ETHUSDT'];
@@ -111,7 +112,7 @@ class Tile {
       layout: {
         background: { type: 'solid', color: 'transparent' },
         textColor: COLORS.text,
-        fontFamily: "'Barlow Semi Condensed', system-ui, sans-serif",
+        fontFamily: CHART_FONT,
         fontSize: 12,
         attributionLogo: false,
       },
@@ -578,3 +579,5 @@ for (const id of SUGGESTIONS) {
 // ------------------------------------------------------------ Go
 render();
 connect();
+// Charts draw text on canvas, which doesn't re-render when a web font arrives; nudge them once fonts are in.
+document.fonts?.ready.then(() => { for (const t of tiles.values()) t.chart?.applyOptions({ layout: { fontFamily: CHART_FONT } }); });

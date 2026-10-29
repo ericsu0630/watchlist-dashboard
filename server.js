@@ -34,9 +34,14 @@ const source = DEMO
 // ---------------------------------------------------------------- HTTP
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
+// Third-party files come straight from node_modules and only change on `npm update`, so let the browser cache them.
+const vendorCache = { maxAge: '7d' };
 app.get('/vendor/lightweight-charts.js', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'node_modules/lightweight-charts/dist/lightweight-charts.standalone.production.js'));
+  res.sendFile(path.join(__dirname, 'node_modules/lightweight-charts/dist/lightweight-charts.standalone.production.js'), vendorCache);
 });
+for (const family of ['barlow-semi-condensed', 'inter-tight']) {
+  app.use(`/fonts/${family}`, express.static(path.join(__dirname, `node_modules/@fontsource/${family}/files`), vendorCache));
+}
 app.get('/api/config', (_req, res) => res.json({ demo: DEMO }));
 app.get('/api/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
