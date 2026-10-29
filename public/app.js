@@ -3,10 +3,14 @@ import { TIMEFRAMES, DEFAULT_TIMEFRAME } from './timeframes.js';
 const LWC = window.LightweightCharts;
 const $ = (sel, root = document) => root.querySelector(sel);
 
+// Chart colors come from the theme settings at the top of styles.css, so the stylesheet is the one place to change them.
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const COLORS = {
-  up: '#34d3a0', down: '#ff6e7f', text: '#7d8aa3', grid: '#1b2638', cross: '#5b6a86', label: '#22304a', lastPrice: '#93a5ff',
-  volUp: '#34d3a02e', volDown: '#ff6e7f2e', flashUp: '#34d3a033', flashDown: '#ff6e7f33',
+  up: css('--up'), down: css('--down'), text: css('--muted'), grid: css('--chart-grid'),
+  cross: css('--crosshair'), label: css('--active'), lastPrice: css('--accent'),
 };
+// Translucent versions for volume bars and the price tick flash (6-digit hex + alpha).
+Object.assign(COLORS, { volUp: `${COLORS.up}2e`, volDown: `${COLORS.down}2e`, flashUp: `${COLORS.up}33`, flashDown: `${COLORS.down}33` });
 const CHART_FONT = "'Barlow Semi Condensed', system-ui, sans-serif";
 const SESSION_LABELS = { market: 'Market open', pre_market: 'Pre-market', post_market: 'After hours', out_of_session: 'Market closed' };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
