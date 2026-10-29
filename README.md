@@ -4,7 +4,7 @@ A dark, four-column board of live candlestick charts for the symbols you track.
 Data comes from TradingView through [TradingView-API](https://github.com/Mathieu2301/TradingView-API).
 Charts are drawn with [Lightweight Charts](https://www.tradingview.com/lightweight-charts/).
 
-![The Watchlist dashboard: a dark grid of live candlestick charts for AAPL, BTCUSDT, DXY, ETHUSD, GOOG, MSFT, NFLX, NVDA and SPX, sorted A–Z on 1-hour candles](docs/screenshot.png)
+![The Watchlist dashboard in its dark grey theme: a grid of live candlestick charts for AAPL, BTCUSDT, DXY, ETHUSD, GOOG, MSFT, NFLX, NVDA and SPX, sorted A–Z on 1-hour candles](docs/screenshot.png)
 
 ## Run it
 
