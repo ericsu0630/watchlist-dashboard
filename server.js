@@ -67,11 +67,13 @@ class Stream {
     this.retry = 0;
     this.timer = null;
     this.error = null;
-    this.cache = {}; // last messages, replayed to newly joined sockets
+    // Last messages, replayed to newly joined sockets. Values are JSON strings,
+    // or functions that build one (so large snapshots are only serialized when needed).
+    this.cache = {};
   }
   add(ws) {
     this.sockets.add(ws);
-    for (const msg of Object.values(this.cache)) send(ws, msg);
+    for (const entry of Object.values(this.cache)) sendRaw(ws, typeof entry === 'function' ? entry() : entry);
     if (this.error) send(ws, this.error);
     if (!this.handle && !this.timer) this.start();
   }
@@ -79,9 +81,11 @@ class Stream {
     this.sockets.delete(ws);
     if (this.sockets.size === 0) this.stop();
   }
+  // Serializes once, however many tabs are listening.
   broadcast(msg, cacheAs) {
-    if (cacheAs) this.cache[cacheAs] = msg;
-    for (const ws of this.sockets) send(ws, msg);
+    const raw = JSON.stringify(msg);
+    if (cacheAs) this.cache[cacheAs] = raw;
+    for (const ws of this.sockets) sendRaw(ws, raw);
   }
   async start() {
     this.timer = null;
@@ -143,22 +147,20 @@ function candleStream(symbol, tf) {
   if (streams.has(key)) return streams.get(key);
   const preset = TIMEFRAMES.find((t) => t.id === tf) || TIMEFRAMES.find((t) => t.id === DEFAULT_TIMEFRAME);
   const s = new Stream(key, async (stream) => {
-    let prev = null;
+    let prevLastTime = null;
     const handle = await source.watchCandles(symbol, preset.interval, preset.count, {
       onData(candles) {
-        const bars = candles.map(toBar);
-        const last = bars.at(-1);
-        let full = true;
-        if (prev && last) {
-          const prevLast = prev.at(-1);
-          // Same series, only the latest one or two bars moved: send the tail.
-          if (prevLast && (last.time === prevLast.time || (bars.at(-2)?.time === prevLast.time))) full = false;
-        }
-        prev = bars;
-        // Keep the full snapshot cached so new tabs get everything.
-        stream.cache.bars = { type: 'bars', symbol, tf, full: true, bars };
-        const msg = full ? stream.cache.bars : { type: 'bars', symbol, tf, full: false, bars: bars.slice(-2) };
-        for (const ws of stream.sockets) send(ws, msg);
+        const lastTime = candles.at(-1)?.time;
+        // Same series and only the latest one or two bars moved: send just the tail.
+        const tail = prevLastTime != null && (lastTime === prevLastTime || candles.at(-2)?.time === prevLastTime);
+        prevLastTime = lastTime;
+        // New tabs get the full snapshot, built only when one actually joins.
+        let fullRaw = null;
+        const full = () => (fullRaw ??= JSON.stringify({ type: 'bars', symbol, tf, full: true, bars: candles.map(toBar) }));
+        stream.cache.bars = full;
+        if (!stream.sockets.size) return;
+        const raw = tail ? JSON.stringify({ type: 'bars', symbol, tf, full: false, bars: candles.slice(-2).map(toBar) }) : full();
+        for (const ws of stream.sockets) sendRaw(ws, raw);
       },
       onError(err) {
         stream.fail(err);
@@ -251,7 +253,10 @@ wss.on('connection', (ws) => {
 });
 
 function send(ws, msg) {
-  if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+  sendRaw(ws, JSON.stringify(msg));
+}
+function sendRaw(ws, raw) {
+  if (ws.readyState === 1) ws.send(raw);
 }
 
 server.listen(PORT, HOST, () => {

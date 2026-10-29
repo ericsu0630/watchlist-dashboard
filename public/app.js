@@ -4,8 +4,11 @@ const LWC = window.LightweightCharts;
 const $ = (sel, root = document) => root.querySelector(sel);
 
 const COLORS = {
-  up: '#34d3a0', down: '#ff6e7f', text: '#7d8aa3', grid: '#1a253733', cross: '#5b6a86',
+  up: '#34d3a0', down: '#ff6e7f', text: '#7d8aa3', grid: '#1b2638', cross: '#5b6a86', label: '#22304a', lastPrice: '#93a5ff',
+  volUp: '#34d3a02e', volDown: '#ff6e7f2e', flashUp: '#34d3a033', flashDown: '#ff6e7f33',
 };
+const SESSION_LABELS = { market: 'Market open', pre_market: 'Pre-market', post_market: 'After hours', out_of_session: 'Market closed' };
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const DEFAULTS = ['NASDAQ:AAPL', 'NASDAQ:NVDA', 'NASDAQ:MSFT', 'TWSE:2330', 'AMEX:SPY', 'NASDAQ:QQQ', 'BINANCE:BTCUSDT', 'BINANCE:ETHUSDT'];
 const SUGGESTIONS = ['NASDAQ:AAPL', 'NASDAQ:NVDA', 'NASDAQ:TSLA', 'AMEX:SPY', 'TWSE:2330', 'BINANCE:BTCUSDT', 'FX:EURUSD', 'TVC:GOLD'];
 
@@ -48,6 +51,11 @@ function decimalsFor(pricescale, price) {
 function fmt(n, d) {
   return Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 }
+// DOM writes only when the value actually changes (quotes arrive every second).
+function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
+function setAttr(el, name, value) { if (el.getAttribute(name) !== value) el.setAttribute(name, value); }
+const toCandle = (b) => ({ time: toLocal(b.time), open: b.open, high: b.high, low: b.low, close: b.close });
+const toVolume = (b) => ({ time: toLocal(b.time), value: b.volume, color: b.close >= b.open ? COLORS.volUp : COLORS.volDown });
 
 // ------------------------------------------------------------ Tile
 class Tile {
@@ -60,16 +68,23 @@ class Tile {
     this.lastPrice = null;
     this.info = null;
     this.quote = {};
+    // Look up the tile's elements once.
+    const q = (sel) => $(sel, this.el);
+    this.ui = {
+      ticker: q('.ticker'), exch: q('.exch'), name: q('.name'), price: q('.price'), change: q('.change'),
+      session: q('.session'), delay: q('.delay'), state: q('.state span'), chart: q('.chart'), grip: q('.grip'), remove: q('.remove'),
+    };
 
     const [exch, ticker] = splitSymbol(symbol);
-    $('.ticker', this.el).textContent = ticker;
-    $('.exch', this.el).textContent = exch;
-    $('.remove', this.el).setAttribute('aria-label', `Remove ${ticker}`);
-    $('.grip', this.el).setAttribute('aria-label', `Reorder ${ticker}. Use left and right arrow keys.`);
+    this.ui.ticker.textContent = ticker;
+    this.ui.exch.textContent = exch;
+    this.ui.remove.setAttribute('aria-label', `Remove ${ticker}`);
+    this.ui.grip.setAttribute('aria-label', `Reorder ${ticker}. Use left and right arrow keys.`);
     this.el.setAttribute('aria-label', `${ticker} on ${exch}`);
 
-    $('.remove', this.el).addEventListener('click', () => removeSymbol(symbol));
-    $('.grip', this.el).addEventListener('keydown', (e) => {
+    this.ui.remove.addEventListener('click', () => removeSymbol(symbol));
+    this.ui.chart.addEventListener('dblclick', () => this.fitRange());
+    this.ui.grip.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); moveSymbol(symbol, -1); }
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); moveSymbol(symbol, 1); }
     });
@@ -79,8 +94,7 @@ class Tile {
 
   mountChart() {
     if (this.chart) return;
-    const container = $('.chart', this.el);
-    this.chart = LWC.createChart(container, {
+    this.chart = LWC.createChart(this.ui.chart, {
       autoSize: true,
       layout: {
         background: { type: 'solid', color: 'transparent' },
@@ -89,13 +103,13 @@ class Tile {
         fontSize: 12,
         attributionLogo: false,
       },
-      grid: { vertLines: { visible: false }, horzLines: { color: '#1b2638' } },
+      grid: { vertLines: { visible: false }, horzLines: { color: COLORS.grid } },
       rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.24 } },
       timeScale: { borderVisible: false, rightOffset: 2, barSpacing: state.zoom, minBarSpacing: 0.5, timeVisible: isIntraday(), secondsVisible: false, fixLeftEdge: false },
       crosshair: {
         mode: LWC.CrosshairMode.Normal,
-        vertLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: '#22304a' },
-        horzLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: '#22304a' },
+        vertLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
+        horzLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
       },
       // Leave the mouse wheel to the page so the grid scrolls; drag and pinch still pan/zoom.
       handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
@@ -104,26 +118,25 @@ class Tile {
     this.candles = this.chart.addSeries(LWC.CandlestickSeries, {
       upColor: COLORS.up, downColor: COLORS.down, borderVisible: false,
       wickUpColor: COLORS.up, wickDownColor: COLORS.down,
-      priceLineColor: '#93a5ff', priceLineStyle: LWC.LineStyle.Dotted,
+      priceLineColor: COLORS.lastPrice, priceLineStyle: LWC.LineStyle.Dotted,
     });
     this.volume = this.chart.addSeries(LWC.HistogramSeries, {
       priceFormat: { type: 'volume' }, priceScaleId: 'vol', lastValueVisible: false, priceLineVisible: false,
     });
     this.chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
-    container.addEventListener('dblclick', () => this.fitRange());
     if (this.decimals != null) this.applyPriceFormat();
   }
 
   setLoading() {
     this.el.classList.remove('ready', 'error');
     this.el.classList.add('loading');
-    $('.state span', this.el).textContent = 'Loading chart';
+    this.ui.state.textContent = 'Loading chart';
     this.lastTime = null;
   }
   setError(message) {
     this.el.classList.remove('ready', 'loading');
     this.el.classList.add('error');
-    $('.state span', this.el).textContent = message;
+    this.ui.state.textContent = message;
     this.candles?.setData([]);
     this.volume?.setData([]);
   }
@@ -138,26 +151,17 @@ class Tile {
   setBars(bars, full) {
     this.mountChart();
     if (full) {
-      const c = [], v = [];
-      for (const b of bars) {
-        const time = toLocal(b.time);
-        c.push({ time, open: b.open, high: b.high, low: b.low, close: b.close });
-        v.push({ time, value: b.volume, color: b.close >= b.open ? '#34d3a02e' : '#ff6e7f2e' });
-      }
-      this.candles.setData(c);
-      this.volume.setData(v);
+      this.candles.setData(bars.map(toCandle));
+      this.volume.setData(bars.map(toVolume));
       this.lastTime = bars.at(-1)?.time ?? null;
-      this.barCount = bars.length;
       this.el.classList.remove('loading', 'error');
       this.el.classList.add('ready');
       this.fitRange();
     } else if (this.lastTime != null) {
       for (const b of bars) {
         if (b.time < this.lastTime) continue;
-        if (b.time > this.lastTime) this.barCount++;
-        const time = toLocal(b.time);
-        this.candles.update({ time, open: b.open, high: b.high, low: b.low, close: b.close });
-        this.volume.update({ time, value: b.volume, color: b.close >= b.open ? '#34d3a02e' : '#ff6e7f2e' });
+        this.candles.update(toCandle(b));
+        this.volume.update(toVolume(b));
         this.lastTime = b.time;
       }
     }
@@ -176,7 +180,7 @@ class Tile {
 
   setInfo(info) {
     this.info = info;
-    if (info.description) $('.name', this.el).textContent = info.description;
+    if (info.description) setText(this.ui.name, info.description);
     if (info.pricescale) { this.decimals = decimalsFor(info.pricescale); this.applyPriceFormat(); }
   }
 
@@ -189,41 +193,39 @@ class Tile {
   setQuote(q) {
     Object.assign(this.quote, Object.fromEntries(Object.entries(q).filter(([, v]) => v != null)));
     const quote = this.quote;
-    if (quote.description && !this.info?.description) $('.name', this.el).textContent = quote.description;
+    if (quote.description && !this.info?.description) setText(this.ui.name, quote.description);
     if (this.decimals == null && (quote.pricescale || quote.lp != null)) this.decimals = decimalsFor(quote.pricescale, quote.lp);
 
     if (quote.lp != null) this.renderPrice(quote.lp);
 
-    const ch = $('.change', this.el);
+    const { change, session, delay } = this.ui;
     if (quote.ch != null && quote.chp != null) {
       const sign = quote.ch > 0 ? '+' : quote.ch < 0 ? '−' : '';
-      ch.textContent = `${sign}${fmt(Math.abs(quote.ch), this.decimals ?? 2)}  ${sign}${fmt(Math.abs(quote.chp), 2)}%`;
-      ch.className = `change ${quote.ch > 0 ? 'up' : quote.ch < 0 ? 'down' : ''}`;
-      ch.setAttribute('aria-label', `Day change ${sign}${fmt(Math.abs(quote.chp), 2)} percent`);
+      const pct = `${sign}${fmt(Math.abs(quote.chp), 2)}`;
+      setText(change, `${sign}${fmt(Math.abs(quote.ch), this.decimals ?? 2)}  ${pct}%`);
+      setAttr(change, 'class', `change ${quote.ch > 0 ? 'up' : quote.ch < 0 ? 'down' : ''}`);
+      setAttr(change, 'aria-label', `Day change ${pct} percent`);
     }
 
-    const dot = $('.session', this.el);
     const s = quote.current_session;
     if (s) {
-      dot.hidden = false;
-      dot.className = `session ${s === 'market' ? 'open' : (s === 'pre_market' || s === 'post_market') ? 'ext' : ''}`;
-      dot.title = { market: 'Market open', pre_market: 'Pre-market', post_market: 'After hours', out_of_session: 'Market closed' }[s] || s;
+      session.hidden = false;
+      setAttr(session, 'class', `session ${s === 'market' ? 'open' : (s === 'pre_market' || s === 'post_market') ? 'ext' : ''}`);
+      setAttr(session, 'title', SESSION_LABELS[s] || s);
     }
 
-    const delay = $('.delay', this.el);
     const m = /^delayed[^\d]*(\d+)/.exec(quote.update_mode || '');
     delay.hidden = !m;
-    if (m) delay.textContent = `${Math.round(Number(m[1]) / 60)} min delay`;
+    if (m) setText(delay, `${Math.round(Number(m[1]) / 60)} min delay`);
   }
 
   renderPrice(price) {
-    const el = $('.price', this.el);
-    const d = this.decimals ?? decimalsFor(0, price);
-    el.textContent = fmt(price, d);
-    if (this.lastPrice != null && price !== this.lastPrice) {
-      el.classList.remove('tick-up', 'tick-down');
-      void el.offsetWidth; // restart the animation
-      el.classList.add(price > this.lastPrice ? 'tick-up' : 'tick-down');
+    const el = this.ui.price;
+    setText(el, fmt(price, this.decimals ?? decimalsFor(0, price)));
+    // Brief tint on each tick. Web Animations restart cleanly without forcing a layout.
+    if (this.lastPrice != null && price !== this.lastPrice && !reducedMotion.matches) {
+      el.animate([{ backgroundColor: price > this.lastPrice ? COLORS.flashUp : COLORS.flashDown }, { backgroundColor: 'transparent' }],
+        { duration: 700, easing: 'ease-out' });
     }
     this.lastPrice = price;
   }
@@ -273,7 +275,7 @@ function moveSymbol(sym, delta) {
   state.symbols.splice(j, 0, sym);
   save();
   render();
-  $('.grip', tiles.get(sym).el).focus();
+  tiles.get(sym).ui.grip.focus();
 }
 
 // ------------------------------------------------------------ Drag to reorder
@@ -417,7 +419,7 @@ function handle(msg) {
       break;
     case 'retrying':
       setConn('down', 'TradingView unreachable');
-      if (tile && msg.tf === state.tf && !tile.el.classList.contains('ready')) $('.state span', tile.el).textContent = msg.message;
+      if (tile && msg.tf === state.tf && !tile.el.classList.contains('ready')) tile.ui.state.textContent = msg.message;
       break;
   }
 }

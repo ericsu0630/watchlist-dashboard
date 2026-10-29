@@ -1,7 +1,6 @@
 :root {
   --ground: #0b111c;
   --tile: #111a2a;
-  --tile-hi: #16213461;
   --line: #1e2a3e;
   --line-strong: #2b3a54;
   --divider: #3d5072; /* grid lines between tiles */
@@ -181,10 +180,6 @@ main { padding: 10px 10px 32px; }
 
 .quote { text-align: right; padding-left: 8px; }
 .price { font: 600 21px/1.05 var(--num); font-variant-numeric: tabular-nums; border-radius: 4px; padding: 0 3px; margin-right: -3px; }
-.price.tick-up { animation: tickUp .7s ease-out; }
-.price.tick-down { animation: tickDown .7s ease-out; }
-@keyframes tickUp { from { background: #34d3a033; } to { background: transparent; } }
-@keyframes tickDown { from { background: #ff6e7f33; } to { background: transparent; } }
 .change { white-space: pre; margin-top: 3px; font: 500 14px/1.1 var(--num); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
 .change.up { color: var(--up); }
 .change.down { color: var(--down); }
