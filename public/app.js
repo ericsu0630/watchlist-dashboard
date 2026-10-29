@@ -33,6 +33,10 @@ const save = () => { store.set('pd.symbols', state.symbols); store.set('pd.tf', 
 save();
 
 const tiles = new Map(); // symbol -> Tile
+// Charts exist only for tiles on screen or within 300 px of it.
+const visibility = new IntersectionObserver((entries) => {
+  for (const e of entries) e.isIntersecting ? e.target.tile.mount() : e.target.tile.unmount();
+}, { rootMargin: '300px 0px' });
 const grid = $('#grid');
 const tpl = $('#tile-tpl');
 
@@ -68,6 +72,11 @@ class Tile {
     this.lastPrice = null;
     this.info = null;
     this.quote = {};
+    // Candle data lives here; the chart is only a view of it while the tile is on screen.
+    this.candleData = [];
+    this.volumeData = [];
+    this.chart = null;
+    this.view = null; // { pos, spacing } saved when the chart is taken down, so it comes back where it was
     // Look up the tile's elements once.
     const q = (sel) => $(sel, this.el);
     this.ui = {
@@ -90,9 +99,12 @@ class Tile {
     });
     setupDrag(this);
     this.setLoading();
+    this.el.tile = this;
+    visibility.observe(this.el);
   }
 
-  mountChart() {
+  // Build the chart (called when the tile comes near the viewport).
+  mount() {
     if (this.chart) return;
     this.chart = LWC.createChart(this.ui.chart, {
       autoSize: true,
@@ -125,6 +137,23 @@ class Tile {
     });
     this.chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
     if (this.decimals != null) this.applyPriceFormat();
+    if (this.candleData.length) {
+      this.candles.setData(this.candleData);
+      this.volume.setData(this.volumeData);
+      if (this.view) {
+        this.chart.timeScale().applyOptions({ barSpacing: this.view.spacing });
+        this.chart.timeScale().scrollToPosition(this.view.pos, false);
+      } else this.fitRange();
+    }
+  }
+
+  // Free the chart's canvases while the tile is far off screen; remember where it was scrolled to.
+  unmount() {
+    if (!this.chart) return;
+    const ts = this.chart.timeScale();
+    this.view = { pos: ts.scrollPosition(), spacing: ts.options().barSpacing };
+    this.chart.remove();
+    this.chart = this.candles = this.volume = null;
   }
 
   setLoading() {
@@ -137,6 +166,8 @@ class Tile {
     this.el.classList.remove('ready', 'loading', 'switching');
     this.el.classList.add('error');
     this.ui.state.textContent = message;
+    this.candleData = [];
+    this.volumeData = [];
     this.candles?.setData([]);
     this.volume?.setData([]);
   }
@@ -149,21 +180,38 @@ class Tile {
   }
 
   setBars(bars, full) {
-    this.mountChart();
     if (full) {
-      this.chart.applyOptions({ timeScale: { timeVisible: isIntraday() } });
-      this.candles.setData(bars.map(toCandle));
-      this.volume.setData(bars.map(toVolume));
+      this.candleData = bars.map(toCandle);
+      this.volumeData = bars.map(toVolume);
       this.lastTime = bars.at(-1)?.time ?? null;
       this.el.classList.remove('loading', 'error', 'switching');
       this.el.classList.add('ready');
-      this.fitRange();
+      this.view = null;
+      if (this.chart) {
+        this.chart.applyOptions({ timeScale: { timeVisible: isIntraday() } });
+        this.candles.setData(this.candleData);
+        this.volume.setData(this.volumeData);
+        this.fitRange();
+      }
     } else if (this.lastTime != null) {
       for (const b of bars) {
         if (b.time < this.lastTime) continue;
-        this.candles.update(toCandle(b));
-        this.volume.update(toVolume(b));
+        const c = toCandle(b), v = toVolume(b);
+        if (this.candleData.at(-1)?.time === c.time) {
+          this.candleData[this.candleData.length - 1] = c;
+          this.volumeData[this.volumeData.length - 1] = v;
+        } else {
+          this.candleData.push(c);
+          this.volumeData.push(v);
+        }
+        this.candles?.update(c);
+        this.volume?.update(v);
         this.lastTime = b.time;
+      }
+      // Keep memory bounded on a tile left open for days.
+      if (this.candleData.length > 1500) {
+        this.candleData = this.candleData.slice(-1000);
+        this.volumeData = this.volumeData.slice(-1000);
       }
     }
     const last = bars.at(-1);
@@ -173,6 +221,7 @@ class Tile {
 
   // Apply the shared candle width and bring the latest candle back to the right edge.
   fitRange() {
+    this.view = null;
     if (!this.chart) return;
     const ts = this.chart.timeScale();
     ts.applyOptions({ barSpacing: state.zoom });
@@ -232,6 +281,7 @@ class Tile {
   }
 
   destroy() {
+    visibility.unobserve(this.el);
     this.chart?.remove();
     this.el.remove();
   }
@@ -245,7 +295,6 @@ function render() {
     let tile = tiles.get(sym);
     if (!tile) { tile = new Tile(sym); tiles.set(sym, tile); }
     if (grid.children[i] !== tile.el) grid.insertBefore(tile.el, grid.children[i] || null);
-    tile.mountChart();
   });
   $('#empty').hidden = state.symbols.length > 0;
   $('#count').textContent = state.symbols.length ? `${state.symbols.length} symbol${state.symbols.length === 1 ? '' : 's'}` : '';
