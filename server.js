@@ -56,6 +56,10 @@ const server = createServer(app);
 // One upstream stream per (symbol, timeframe) for candles and one per symbol
 // for quotes, shared by every open browser tab and reference counted.
 
+// How long a stream keeps running after its last tab stops watching it, so switching back
+// to an interval (or re-adding a symbol) is instant instead of reloading from TradingView.
+const LINGER_MS = 60_000;
+
 const FATAL = new Set(['SYMBOL_ERROR', 'SERIES_ERROR', 'INVALID_ARGUMENT', 'CRITICAL_ERROR', 'NO_DATA', 'QUOTE_ERROR']);
 
 class Stream {
@@ -72,6 +76,8 @@ class Stream {
     this.cache = {};
   }
   add(ws) {
+    clearTimeout(this.lingerTimer);
+    this.lingerTimer = null;
     this.sockets.add(ws);
     for (const entry of Object.values(this.cache)) sendRaw(ws, typeof entry === 'function' ? entry() : entry);
     if (this.error) send(ws, this.error);
@@ -79,7 +85,7 @@ class Stream {
   }
   remove(ws) {
     this.sockets.delete(ws);
-    if (this.sockets.size === 0) this.stop();
+    if (this.sockets.size === 0 && !this.lingerTimer) this.lingerTimer = setTimeout(() => this.stop(), LINGER_MS);
   }
   // Serializes once, however many tabs are listening.
   broadcast(msg, cacheAs) {
@@ -129,6 +135,8 @@ class Stream {
   }
   stop() {
     this.token = null;
+    clearTimeout(this.lingerTimer);
+    this.lingerTimer = null;
     clearTimeout(this.timer);
     this.timer = null;
     const h = this.handle;

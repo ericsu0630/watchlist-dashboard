@@ -185,7 +185,8 @@ main { padding: 10px 10px 32px; }
 .change.down { color: var(--down); }
 
 .chart-wrap { position: relative; height: 224px; margin: 4px 0 6px; }
-.chart { position: absolute; inset: 0; }
+.chart { position: absolute; inset: 0; transition: opacity .15s; }
+.tile.switching .chart { opacity: .45; }
 .state {
   position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center;
   font-size: 13px; color: var(--muted); pointer-events: none;

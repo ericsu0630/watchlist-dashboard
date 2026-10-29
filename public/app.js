@@ -134,27 +134,28 @@ class Tile {
     this.lastTime = null;
   }
   setError(message) {
-    this.el.classList.remove('ready', 'loading');
+    this.el.classList.remove('ready', 'loading', 'switching');
     this.el.classList.add('error');
     this.ui.state.textContent = message;
     this.candles?.setData([]);
     this.volume?.setData([]);
   }
 
+  // Keep the current candles on screen (dimmed) until the new interval's data arrives.
   applyTimeframe() {
-    this.chart?.applyOptions({ timeScale: { timeVisible: isIntraday() } });
-    this.candles?.setData([]);
-    this.volume?.setData([]);
-    this.setLoading();
+    this.lastTime = null; // ignore stray updates until the new full snapshot lands
+    if (this.el.classList.contains('ready')) this.el.classList.add('switching');
+    else this.setLoading();
   }
 
   setBars(bars, full) {
     this.mountChart();
     if (full) {
+      this.chart.applyOptions({ timeScale: { timeVisible: isIntraday() } });
       this.candles.setData(bars.map(toCandle));
       this.volume.setData(bars.map(toVolume));
       this.lastTime = bars.at(-1)?.time ?? null;
-      this.el.classList.remove('loading', 'error');
+      this.el.classList.remove('loading', 'error', 'switching');
       this.el.classList.add('ready');
       this.fitRange();
     } else if (this.lastTime != null) {
