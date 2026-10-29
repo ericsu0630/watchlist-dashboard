@@ -18,6 +18,10 @@ Then open **http://localhost:3000**.
 
 To try the UI without a network connection, run `npm run demo`. It uses simulated prices.
 
+Everything the page needs, fonts included, is served from your machine. Only market data comes from TradingView.
+
+After pulling new changes, run `npm install` again in case dependencies changed, then restart the server.
+
 ## Using the board
 
 - **Add a symbol**: press `/` or click the search bar, type a ticker or company name (`AAPL`, `2330`, `bitcoin`), then pick a result with the arrow keys and Enter.
@@ -58,13 +62,14 @@ Keep `.env` private. Anyone with those cookies can use your TradingView session.
 ## How it's built
 
 ```
-server.js            Express + WebSocket server. Shares one upstream stream per symbol/timeframe across tabs, and reconnects on its own
-lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, watchQuotes on one shared connection
+server.js            Express + WebSocket server. Shares one upstream stream per symbol/interval across tabs, keeps it
+                     warm for 60 s after the last tab leaves, and reconnects on its own. Serves fonts and the chart library
+lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one shared quote session, all on one connection
 lib/demo-source.js   Simulated data for `npm run demo`
 public/index.html    Page layout
 public/styles.css    Dark theme
-public/app.js        Search, grid, charts, drag-to-reorder, live updates
-public/timeframes.js Timeframe presets, used by both the server and the browser
+public/app.js        Search, grid, charts, drag-to-reorder, live updates. Charts are only built for tiles near the screen
+public/timeframes.js Candle intervals, used by both the server and the browser
 ```
 
 TradingView-API is an unofficial community library and is not affiliated with TradingView.
