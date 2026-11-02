@@ -627,7 +627,7 @@ for (const id of SUGGESTIONS) {
 }
 
 // ------------------------------------------------------------ News view
-// Replaces the grid with the latest headlines (last 48 hours) for every symbol on the board.
+// Replaces the grid with the latest headlines (window set by the server, 24 hours) for every symbol on the board.
 const NEWS_REFRESH_MS = 5 * 60_000;
 const news = {
   open: false, data: null, filter: null, seq: 0, loading: false, timer: null, tick: null,
@@ -728,8 +728,9 @@ function renderNews() {
   if (news.filter && !state.symbols.includes(news.filter)) news.filter = null;
   const shown = news.filter ? items.filter((it) => it.symbols.includes(news.filter)) : items;
 
+  const win = `${d.windowHours || 24} hours`;
   const updated = d.fetchedAt ? ` Updated ${clock(d.fetchedAt)}.` : '';
-  news.sub.textContent = n ? `${items.length} headline${items.length === 1 ? '' : 's'} from the last 48 hours for your ${n} symbol${n === 1 ? '' : 's'}.${updated}` : '';
+  news.sub.textContent = n ? `${items.length} headline${items.length === 1 ? '' : 's'} from the last ${win} for your ${n} symbol${n === 1 ? '' : 's'}.${updated}` : '';
 
   // Filter chips: All, then each symbol with its headline count, in board order.
   const counts = new Map(state.symbols.map((s) => [s, 0]));
@@ -748,7 +749,7 @@ function renderNews() {
   }
   if (!shown.length) {
     const msg = failed.length === n ? 'Headlines couldn\'t be loaded for any of your symbols.'
-      : news.filter ? `No headlines for ${escapeHtml(ticker(news.filter))} in the last 48 hours.` : 'No headlines for your symbols in the last 48 hours.';
+      : news.filter ? `No headlines for ${escapeHtml(ticker(news.filter))} in the last ${win}.` : `No headlines for your symbols in the last ${win}.`;
     news.list.innerHTML = `<div class="news-state"><p>${msg}</p>${failed.length === n ? '<button type="button" data-retry>Try again</button>' : ''}</div>`;
     return;
   }
