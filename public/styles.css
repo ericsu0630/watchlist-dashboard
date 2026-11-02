@@ -277,6 +277,10 @@ main { padding: 10px 10px 32px; }
 .news-filter button[aria-pressed="true"] span { color: var(--ink-2); }
 .news-note { margin: 12px 0 0; font-size: 13px; color: var(--amber); }
 .news-list.refreshing { opacity: .55; transition: opacity .15s; }
+.news-older { margin: 40px 0 0; }
+.news-older h2 { margin: 0; font: 600 20px/1.1 var(--num); color: var(--ink); }
+.news-older p { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); max-width: 70ch; }
+.news-older + .news-day { margin-top: 18px; }
 .news-day { margin: 28px 0 4px; font: 600 16px/1 var(--num); letter-spacing: .02em; color: var(--muted); }
 .story { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); }
 .story time { padding-top: 3px; font: 500 15px/1.3 var(--num); font-variant-numeric: tabular-nums; color: var(--muted); }

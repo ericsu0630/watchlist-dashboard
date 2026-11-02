@@ -700,7 +700,8 @@ function timeAgo(t) {
   const m = Math.max(0, Math.round((Date.now() / 1000 - t) / 60));
   if (m < 1) return 'Just now';
   if (m < 60) return `${m} min ago`;
-  return `${Math.round(m / 60)} h ago`;
+  if (m < 48 * 60) return `${Math.round(m / 60)} h ago`;
+  return `${Math.round(m / 1440)} days ago`;
 }
 function dayLabel(t) {
   const d = new Date(t * 1000), today = new Date();
@@ -730,7 +731,12 @@ function renderNews() {
 
   const win = `${d.windowHours || 24} hours`;
   const updated = d.fetchedAt ? ` Updated ${clock(d.fetchedAt)}.` : '';
-  news.sub.textContent = n ? `${items.length} headline${items.length === 1 ? '' : 's'} from the last ${win} for your ${n} symbol${n === 1 ? '' : 's'}.${updated}` : '';
+  const recentN = items.filter((it) => !it.older).length;
+  const olderN = items.length - recentN;
+  const plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
+  news.sub.textContent = n
+    ? `${plural(recentN, 'headline')} from the last ${win} for your ${plural(n, 'symbol')}${olderN ? `, plus ${olderN} earlier for quiet ones` : ''}.${updated}`
+    : '';
 
   // Filter chips: All, then each symbol with its headline count, in board order.
   const counts = new Map(state.symbols.map((s) => [s, 0]));
@@ -753,13 +759,20 @@ function renderNews() {
     news.list.innerHTML = `<div class="news-state"><p>${msg}</p>${failed.length === n ? '<button type="button" data-retry>Try again</button>' : ''}</div>`;
     return;
   }
-  let html = '', lastDay = '';
+  let html = '', lastDay = '', inOlder = false;
   for (const it of shown) {
+    if (it.older && !inOlder) {
+      // Quiet symbols: their latest stories from before the window, in their own section.
+      inOlder = true; lastDay = '';
+      const quiet = (d.olderFor || []).filter((s) => !news.filter || s === news.filter).map(ticker);
+      html += `<section class="news-older"><h2>Earlier headlines</h2><p>No news in the last ${win} for ${escapeHtml(quiet.join(', ') || 'this symbol')}, so here are the latest stories from the past two weeks.</p></section>`;
+    }
     const day = dayLabel(it.published);
     if (day !== lastDay) { html += `<h2 class="news-day">${escapeHtml(day)}</h2>`; lastDay = day; }
+    const lang = it.lang ? ` lang="${escapeHtml(it.lang)}"` : '';
     const title = it.url
-      ? `<a class="story-title" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(it.title)}</a>`
-      : `<span class="story-title">${escapeHtml(it.title)}</span>`;
+      ? `<a class="story-title" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer"${lang}>${escapeHtml(it.title)}</a>`
+      : `<span class="story-title"${lang}>${escapeHtml(it.title)}</span>`;
     const chips = it.symbols.map((s) => `<button type="button" data-filter="${escapeHtml(s)}" title="Show only ${escapeHtml(ticker(s))} headlines">${escapeHtml(ticker(s))}</button>`).join('');
     html += `<article class="story"><time datetime="${new Date(it.published * 1000).toISOString()}">${clock(it.published)}</time><div>${title}
       <div class="story-meta">${it.source ? `<span>${escapeHtml(it.source)}</span>` : ''}<span>${timeAgo(it.published)}</span>${chips}</div></div></article>`;
