@@ -30,7 +30,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   If you already know the full TradingView id, type it (for example `TWSE:0050`) and press Enter.
 - **News**: the News button left of the search bar swaps the charts for the latest headlines (last 24 hours) for every symbol on your board, newest first.
   Click a symbol chip to show only its headlines, and click a headline to open the full story in a new tab. The list refreshes every 5 minutes while open.
-  Go back with the Charts button, Esc or your browser's back button. Headlines come from TradingView's public news feed. Taiwan-listed symbols (TWSE and TPEX) also get Yahoo Finance (English) and Yahoo股市 (Traditional Chinese) headlines; a story carried by several sources shows once.
+  Go back with the Charts button, Esc or your browser's back button. Headlines come from TradingView's public news feed. Taiwan-listed symbols (TWSE and TPEX) also get Traditional Chinese headlines from Yahoo股市; a story carried by both sources shows once.
   If a symbol has nothing in the last 24 hours, its latest three stories from the past two weeks appear in an "Earlier headlines" section at the end, so quiet days don't leave it blank.
 - **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every chart.
   For example, on 1W each candle is one week, and on 3M each candle is one quarter.
@@ -74,8 +74,7 @@ server.js            Express + WebSocket server. Shares one upstream stream per 
                      warm for 60 s after the last tab leaves, and reconnects on its own. Serves fonts and the chart library
 lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one shared quote session, all on one connection
 lib/news.js          Headlines per symbol: 24-hour window (older fallback for quiet symbols), duplicates merged, 5-minute cache
-lib/yahoo-news.js    Yahoo Finance headlines for Taiwan listings (TWSE:2330 -> 2330.TW, TPEX:6488 -> 6488.TWO)
-lib/yahoo-tw-news.js Yahoo股市 (zh-TW) headlines for Taiwan listings, read from each stock's news page
+lib/yahoo-tw-news.js Yahoo股市 (zh-TW) headlines for Taiwan listings (TWSE:2330 -> 2330.TW, TPEX:6488 -> 6488.TWO), read from each stock's news page
 lib/demo-source.js   Simulated data and sample headlines for `npm run demo`
 public/index.html    Page layout
 public/styles.css    Dark theme
