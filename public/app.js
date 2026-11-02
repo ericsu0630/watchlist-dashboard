@@ -314,7 +314,7 @@ function render() {
     if (!tile) { tile = new Tile(sym); tiles.set(sym, tile); }
     if (grid.children[i] !== tile.el) grid.insertBefore(tile.el, grid.children[i] || null);
   });
-  $('#empty').hidden = state.symbols.length > 0;
+  $('#empty').hidden = state.symbols.length > 0 || news.open;
   $('#count').textContent = state.symbols.length ? `${state.symbols.length} symbol${state.symbols.length === 1 ? '' : 's'}` : '';
 }
 
@@ -326,6 +326,8 @@ function addSymbol(sym) {
     render();
     sendWatch();
   }
+  // In the news view, stay there and include the new symbol's headlines.
+  if (news.open) { loadNews(); return; }
   const tile = tiles.get(sym);
   tile.el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
   tile.el.classList.remove('flash'); void tile.el.offsetWidth; tile.el.classList.add('flash');
@@ -624,8 +626,160 @@ for (const id of SUGGESTIONS) {
   chips.append(b);
 }
 
+// ------------------------------------------------------------ News view
+// Replaces the grid with the latest headlines (last 48 hours) for every symbol on the board.
+const NEWS_REFRESH_MS = 5 * 60_000;
+const news = {
+  open: false, data: null, filter: null, seq: 0, loading: false, timer: null, tick: null,
+  view: $('#news'), list: $('#news-list'), sub: $('#news-sub'), note: $('#news-note'), filterEl: $('#news-filter'),
+  btn: $('#news-btn'), back: $('#news-back'), refresh: $('#news-refresh'),
+};
+const ticker = (sym) => splitSymbol(sym)[1];
+
+function openNews({ push = true } = {}) {
+  if (news.open) return;
+  news.open = true;
+  grid.hidden = true; // hidden tiles count as off screen, so their charts are freed while reading
+  $('#empty').hidden = true;
+  news.view.hidden = false;
+  news.btn.setAttribute('aria-expanded', 'true');
+  if (push) history.pushState({ view: 'news' }, '', '#news');
+  scrollTo(0, 0);
+  news.back.focus();
+  loadNews();
+  news.timer = setInterval(loadNews, NEWS_REFRESH_MS);
+  news.tick = setInterval(renderNews, 60_000); // keep "x min ago" current
+}
+function closeNews({ fromHistory = false } = {}) {
+  if (!news.open) return;
+  if (!fromHistory && history.state?.view === 'news') { history.back(); return; } // popstate closes it
+  news.open = false;
+  clearInterval(news.timer); clearInterval(news.tick);
+  news.view.hidden = true;
+  grid.hidden = false;
+  news.btn.setAttribute('aria-expanded', 'false');
+  if (location.hash === '#news') history.replaceState(null, '', location.pathname);
+  render();
+  news.btn.focus();
+}
+news.btn.addEventListener('click', () => (news.open ? closeNews() : openNews()));
+news.back.addEventListener('click', () => closeNews());
+news.refresh.addEventListener('click', () => loadNews());
+addEventListener('popstate', () => (location.hash === '#news' ? openNews({ push: false }) : closeNews({ fromHistory: true })));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && news.open && document.activeElement !== input) closeNews();
+});
+
+async function loadNews() {
+  const seq = ++news.seq;
+  if (!state.symbols.length) { news.data = { items: [], failed: [] }; renderNews(); return; }
+  news.loading = true;
+  news.refresh.classList.add('spinning');
+  news.list.classList.toggle('refreshing', !!news.data);
+  if (!news.data) news.list.innerHTML = '<div class="news-state"><p>Loading headlines…</p></div>';
+  try {
+    const res = await fetch(`/api/news?symbols=${encodeURIComponent(state.symbols.join(','))}`);
+    const data = await res.json();
+    if (seq !== news.seq) return;
+    if (!res.ok) throw new Error(data.error || 'Headlines are unavailable right now.');
+    news.data = data;
+  } catch (err) {
+    if (seq !== news.seq) return;
+    news.data = { error: err.message || 'Headlines are unavailable right now.' };
+  } finally {
+    if (seq === news.seq) {
+      news.loading = false;
+      news.refresh.classList.remove('spinning');
+      news.list.classList.remove('refreshing');
+      renderNews();
+    }
+  }
+}
+
+function timeAgo(t) {
+  const m = Math.max(0, Math.round((Date.now() / 1000 - t) / 60));
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m} min ago`;
+  return `${Math.round(m / 60)} h ago`;
+}
+function dayLabel(t) {
+  const d = new Date(t * 1000), today = new Date();
+  const days = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+const clock = (t) => new Date(t * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+function renderNews() {
+  if (!news.open) return;
+  const d = news.data;
+  const n = state.symbols.length;
+  if (!d) return;
+  if (d.error) {
+    news.sub.textContent = '';
+    news.filterEl.replaceChildren();
+    news.note.hidden = true;
+    news.list.innerHTML = `<div class="news-state"><p>${escapeHtml(d.error)} Check your internet connection.</p><button type="button" data-retry>Try again</button></div>`;
+    return;
+  }
+  const items = d.items || [];
+  // A filter for a symbol that's no longer on the board is dropped.
+  if (news.filter && !state.symbols.includes(news.filter)) news.filter = null;
+  const shown = news.filter ? items.filter((it) => it.symbols.includes(news.filter)) : items;
+
+  const updated = d.fetchedAt ? ` Updated ${clock(d.fetchedAt)}.` : '';
+  news.sub.textContent = n ? `${items.length} headline${items.length === 1 ? '' : 's'} from the last 48 hours for your ${n} symbol${n === 1 ? '' : 's'}.${updated}` : '';
+
+  // Filter chips: All, then each symbol with its headline count, in board order.
+  const counts = new Map(state.symbols.map((s) => [s, 0]));
+  for (const it of items) for (const s of it.symbols) counts.set(s, (counts.get(s) || 0) + 1);
+  const chip = (sym, label, count) =>
+    `<button type="button" data-filter="${escapeHtml(sym)}" aria-pressed="${(news.filter || '') === sym}">${escapeHtml(label)} <span>${count}</span></button>`;
+  news.filterEl.innerHTML = n ? chip('', 'All', items.length) + state.symbols.map((s) => chip(s, ticker(s), counts.get(s) || 0)).join('') : '';
+
+  const failed = (d.failed || []).filter((s) => state.symbols.includes(s));
+  news.note.hidden = !failed.length;
+  if (failed.length) news.note.textContent = `Headlines for ${failed.map(ticker).join(', ')} couldn't be loaded. They'll be retried on the next refresh.`;
+
+  if (!n) {
+    news.list.innerHTML = '<div class="news-state"><p>Add a symbol with the search bar to see its headlines here.</p></div>';
+    return;
+  }
+  if (!shown.length) {
+    const msg = failed.length === n ? 'Headlines couldn\'t be loaded for any of your symbols.'
+      : news.filter ? `No headlines for ${escapeHtml(ticker(news.filter))} in the last 48 hours.` : 'No headlines for your symbols in the last 48 hours.';
+    news.list.innerHTML = `<div class="news-state"><p>${msg}</p>${failed.length === n ? '<button type="button" data-retry>Try again</button>' : ''}</div>`;
+    return;
+  }
+  let html = '', lastDay = '';
+  for (const it of shown) {
+    const day = dayLabel(it.published);
+    if (day !== lastDay) { html += `<h2 class="news-day">${escapeHtml(day)}</h2>`; lastDay = day; }
+    const title = it.url
+      ? `<a class="story-title" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(it.title)}</a>`
+      : `<span class="story-title">${escapeHtml(it.title)}</span>`;
+    const chips = it.symbols.map((s) => `<button type="button" data-filter="${escapeHtml(s)}" title="Show only ${escapeHtml(ticker(s))} headlines">${escapeHtml(ticker(s))}</button>`).join('');
+    html += `<article class="story"><time datetime="${new Date(it.published * 1000).toISOString()}">${clock(it.published)}</time><div>${title}
+      <div class="story-meta">${it.source ? `<span>${escapeHtml(it.source)}</span>` : ''}<span>${timeAgo(it.published)}</span>${chips}</div></div></article>`;
+  }
+  news.list.innerHTML = html;
+}
+// Filter chips (top row and on each story) and retry buttons.
+news.view.addEventListener('click', (e) => {
+  const f = e.target.closest('[data-filter]');
+  if (f) {
+    const sym = f.dataset.filter || null;
+    news.filter = news.filter === sym && f.closest('.story') ? null : sym;
+    renderNews();
+    return;
+  }
+  if (e.target.closest('[data-retry]')) loadNews();
+});
+
 // ------------------------------------------------------------ Go
 render();
+if (location.hash === '#news') openNews({ push: false });
 connect();
 // Charts draw text on canvas, which doesn't re-render when a web font arrives; nudge them once fonts are in.
 document.fonts?.ready.then(() => { for (const t of tiles.values()) t.chart?.applyOptions({ layout: { fontFamily: CHART_FONT } }); });

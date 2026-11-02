@@ -28,6 +28,9 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 
 - **Add a symbol**: press `/` or click the search bar, type a ticker or company name (`AAPL`, `2330`, `bitcoin`), then pick a result with the arrow keys and Enter.
   If you already know the full TradingView id, type it (for example `TWSE:0050`) and press Enter.
+- **News**: the News button left of the search bar swaps the charts for the latest headlines (last 48 hours) for every symbol on your board, newest first.
+  Click a symbol chip to show only its headlines, and click a headline to open the full story in a new tab. The list refreshes every 5 minutes while open.
+  Go back with the Charts button, Esc or your browser's back button. Headlines come from TradingView's public news feed.
 - **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every chart.
   For example, on 1W each candle is one week, and on 3M each candle is one quarter.
 - **Candle width**: the slider next to the interval switch sets how wide candles are on every chart, so they always match across tiles.
@@ -69,7 +72,8 @@ Keep `.env` private. Anyone with those cookies can use your TradingView session.
 server.js            Express + WebSocket server. Shares one upstream stream per symbol/interval across tabs, keeps it
                      warm for 60 s after the last tab leaves, and reconnects on its own. Serves fonts and the chart library
 lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one shared quote session, all on one connection
-lib/demo-source.js   Simulated data for `npm run demo`
+lib/news.js          Headlines per symbol: 48-hour window, stories mentioning several symbols merged, 5-minute cache
+lib/demo-source.js   Simulated data and sample headlines for `npm run demo`
 public/index.html    Page layout
 public/styles.css    Dark theme
 public/app.js        Search, grid, charts, drag-to-reorder, live updates. Charts are only built for tiles near the screen

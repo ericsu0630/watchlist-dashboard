@@ -15,6 +15,7 @@ import { WebSocketServer } from 'ws';
 import { createTradingViewSource } from './lib/tv-source.js';
 import { createDemoSource } from './lib/demo-source.js';
 import { TIMEFRAMES, DEFAULT_TIMEFRAME } from './public/timeframes.js';
+import { createNewsService } from './lib/news.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotEnv(path.join(__dirname, '.env'));
@@ -43,6 +44,19 @@ for (const family of ['barlow-semi-condensed', 'inter-tight']) {
   app.use(`/fonts/${family}`, express.static(path.join(__dirname, `node_modules/@fontsource/${family}/files`), vendorCache));
 }
 app.get('/api/config', (_req, res) => res.json({ demo: DEMO }));
+const news = createNewsService(source);
+const SYMBOL_RE = /^[\w.!&\-]+:[\w.!&\-]+$/;
+// Latest headlines (last 48 hours) for the given symbols: /api/news?symbols=NASDAQ:AAPL,TWSE:2330
+app.get('/api/news', async (req, res) => {
+  const symbols = [...new Set(String(req.query.symbols || '').split(',').map((s) => s.trim()).filter((s) => SYMBOL_RE.test(s)))].slice(0, 80);
+  if (!symbols.length) return res.json({ items: [], failed: [], windowHours: 48, fetchedAt: Math.floor(Date.now() / 1000) });
+  try {
+    res.json(await news.headlines(symbols));
+  } catch (err) {
+    console.error('[news]', err.code || '', err.message);
+    res.status(502).json({ error: 'Headlines are unavailable right now.' });
+  }
+});
 app.get('/api/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) return res.json([]);
