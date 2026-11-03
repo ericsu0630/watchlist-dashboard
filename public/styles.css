@@ -134,8 +134,9 @@ button { font: inherit; color: inherit; }
 }
 .sort:hover { color: var(--ink); }
 .sort svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.sort[data-sort="asc"], .sort[data-sort="desc"] { color: var(--ink); background: var(--active); border-color: var(--active-border); }
-.sort[data-sort="desc"] .s-b { transform: rotate(180deg); transform-origin: 12.5px 7.5px; }
+.sort[data-sort="asc"], .sort[data-sort="desc"], .sort[data-sort="gain"], .sort[data-sort="loss"] { color: var(--ink); background: var(--active); border-color: var(--active-border); }
+.sort[data-sort="desc"] .s-b, .sort[data-sort="gain"] .s-b { transform: rotate(180deg); transform-origin: 12.5px 7.5px; }
+.sort[aria-expanded="true"] { border-color: var(--active-border); color: var(--ink); }
 .sort[data-sort="none"] .s-b { display: none; }
 
 .zoom { display: flex; align-items: center; gap: 8px; color: var(--muted); }
@@ -224,6 +225,8 @@ button { font: inherit; color: inherit; }
 .menu-item:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
 .menu-item.danger { color: var(--down); }
 .menu-item[aria-disabled="true"] { color: var(--muted); cursor: default; background: none; }
+.menu-item.radio { padding-left: 28px; position: relative; }
+.menu-item.radio[aria-checked="true"]::before { content: ''; position: absolute; left: 11px; top: 50%; width: 9px; height: 5px; margin-top: -4px; border: solid var(--ink); border-width: 0 0 1.8px 1.8px; transform: rotate(-45deg); }
 .menu-hint { flex: none; font: 500 12px/1 var(--num); font-variant-numeric: tabular-nums; color: var(--muted); }
 .menu-sep { height: 1px; margin: 5px 4px; background: var(--line); }
 

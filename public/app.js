@@ -34,8 +34,9 @@ const ZOOM_MIN = 1, ZOOM_MAX = 15, ZOOM_DEFAULT = 5;
 const clampZoom = (px) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(Number(px) || ZOOM_DEFAULT)));
 state.zoom = clampZoom(store.get('pd.zoomPx', ZOOM_DEFAULT));
 
-// Sort order: 'asc' / 'desc' by ticker, or 'none' once the user arranges tiles themselves. Each tab has its own.
-const SORT_MODES = ['asc', 'desc', 'none'];
+// Sort order: 'asc' / 'desc' by ticker, 'gain' / 'loss' by day change %, or 'none' once the user arranges
+// tiles themselves. Each tab has its own.
+const SORT_MODES = ['asc', 'desc', 'gain', 'loss', 'none'];
 
 // Tabs group the symbols: [{ id, name, symbols, sort }]. A symbol is in at most one tab.
 // Boards from before tabs existed (pd.symbols, pd.sort) become a single "Default" tab.
@@ -455,6 +456,7 @@ function addSymbol(sym) {
     render();
     sendWatch();
     if (!news.open) warmNews();
+    if (LIVE_SORTS.has(state.sort)) resortSoon(); // its place depends on a price that's on its way
   }
   // In the news view, stay there and include the new symbol's headlines.
   if (news.open) { if (!home) loadNews(); return; }
@@ -508,32 +510,101 @@ function compareSymbols(a, b) {
   const [ea, ta] = splitSymbol(a), [eb, tb] = splitSymbol(b);
   return tickerCollator.compare(ta, tb) || tickerCollator.compare(ea, eb);
 }
+// Day change % of a symbol, from its tile's latest quote; null until a price has arrived.
+function dayChange(sym) {
+  const chp = tiles.get(sym)?.quote.chp;
+  return Number.isFinite(chp) ? chp : null;
+}
+const LIVE_SORTS = new Set(['gain', 'loss']); // orders that change as prices move
+function comparator(mode) {
+  if (mode === 'asc') return compareSymbols;
+  if (mode === 'desc') return (a, b) => compareSymbols(b, a);
+  // Day change: gainers or losers first; symbols without a price yet go last, in ticker order.
+  const dir = mode === 'gain' ? -1 : 1;
+  return (a, b) => {
+    const ca = dayChange(a), cb = dayChange(b);
+    if (ca == null || cb == null) return (ca == null) - (cb == null) || compareSymbols(a, b);
+    return dir * (ca - cb) || compareSymbols(a, b);
+  };
+}
 function applySort(tab = activeTab()) {
   if (tab.sort === 'none') return;
-  const dir = tab.sort === 'asc' ? 1 : -1;
-  tab.symbols.sort((a, b) => dir * compareSymbols(a, b));
+  tab.symbols.sort(comparator(tab.sort));
 }
+
+// Reorders tiles with a short slide from where each one was, instead of a jump.
+function withSlide(change) {
+  const before = reducedMotion.matches ? null : new Map([...grid.children].map((el) => [el, el.getBoundingClientRect()]));
+  change();
+  if (!before) return;
+  for (const el of grid.children) {
+    const a = before.get(el);
+    if (!a) continue;
+    const b = el.getBoundingClientRect();
+    const dx = a.left - b.left, dy = a.top - b.top;
+    if (dx || dy) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2, .7, .2, 1)' });
+  }
+}
+
+// Day-change sorts are kept current as prices move, but gently: a couple of seconds after prices
+// arrive, then at most once a minute, and never while the pointer is over the grid, a menu is open
+// or a tile is being dragged (so nothing moves out from under a click). Waiting re-sorts run as soon
+// as the pointer leaves the grid.
+const RESORT_MS = 60_000;
+let pointerOnGrid = false, resortWaiting = false, resortTimer = null;
+function resortLive() {
+  if (!LIVE_SORTS.has(state.sort) || news.open || document.hidden) return;
+  if (pointerOnGrid || dragSym || !menu.hidden || renaming) { resortWaiting = true; return; }
+  resortWaiting = false;
+  const next = [...state.symbols].sort(comparator(state.sort));
+  if (next.join() === state.symbols.join()) return;
+  withSlide(() => { state.symbols = next; save(); render(); });
+}
+function resortSoon(ms = 2000) {
+  clearTimeout(resortTimer);
+  resortTimer = setTimeout(resortLive, ms);
+}
+setInterval(resortLive, RESORT_MS);
+grid.addEventListener('pointerenter', () => { pointerOnGrid = true; });
+grid.addEventListener('pointerleave', () => { pointerOnGrid = false; if (resortWaiting) resortSoon(600); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && LIVE_SORTS.has(state.sort)) resortSoon(1500); });
+
 const sortBtn = $('#sort');
 const SORT_UI = {
-  asc: { label: 'A–Z', aria: 'Sorted by ticker, A to Z. Activate to sort Z to A.' },
-  desc: { label: 'Z–A', aria: 'Sorted by ticker, Z to A. Activate to sort A to Z.' },
-  none: { label: 'Unsorted', aria: 'Unsorted: your own order. Activate to sort by ticker, A to Z.' },
+  asc: { label: 'A–Z', item: 'Ticker A–Z', desc: 'ticker, A to Z' },
+  desc: { label: 'Z–A', item: 'Ticker Z–A', desc: 'ticker, Z to A' },
+  gain: { label: 'Gainers', item: 'Day change: gainers first', desc: 'day change, gainers first' },
+  loss: { label: 'Losers', item: 'Day change: losers first', desc: 'day change, losers first' },
+  none: { label: 'Unsorted', desc: 'your own order' },
 };
 function setSort(mode) {
   state.sort = mode;
   sortBtn.dataset.sort = mode;
   $('span', sortBtn).textContent = SORT_UI[mode].label;
-  sortBtn.setAttribute('aria-label', SORT_UI[mode].aria);
-  sortBtn.title = SORT_UI[mode].aria;
+  const text = `Sort: ${SORT_UI[mode].desc}. Choose how to order this tab.`;
+  sortBtn.setAttribute('aria-label', text);
+  sortBtn.title = text;
 }
 sortBtn.addEventListener('click', () => {
-  setSort(state.sort === 'asc' ? 'desc' : 'asc');
-  applySort();
-  save();
-  render();
+  if (!menu.hidden && menu.dataset.for === 'sort') { closeMenu(); return; }
+  openMenu({}, sortBtn, 'Sort this tab', [
+    { heading: 'Sort this tab by' },
+    ...['asc', 'desc', 'gain', 'loss'].map((mode) => ({
+      label: SORT_UI[mode].item,
+      checked: state.sort === mode,
+      hint: LIVE_SORTS.has(mode) ? 'Live' : null,
+      action: () => {
+        setSort(mode);
+        withSlide(() => { applySort(); save(); render(); });
+        if (LIVE_SORTS.has(mode)) resortSoon(); // pick up prices that arrive in the next moments
+      },
+    })),
+  ], 'sort');
 });
 setSort(state.sort);
-applySort();
+// A day-change order can't be worked out before prices arrive, so the saved order stands until they do.
+if (LIVE_SORTS.has(state.sort)) resortSoon(3000);
+else applySort();
 
 // ------------------------------------------------------------ Tabs
 const tabList = $('#tab-list');
@@ -577,6 +648,7 @@ function switchTab(id, { scroll = true } = {}) {
   render();
   sendWatch();
   if (scroll && !news.open) scrollTo(0, 0);
+  if (LIVE_SORTS.has(state.sort)) resortSoon(); // once this tab's prices have caught up
 }
 
 function uniqueTabName(base) {
@@ -746,17 +818,23 @@ grid.addEventListener('contextmenu', (e) => {
 // One menu element, filled for whatever was right-clicked. Arrow keys, Home/End, Enter and Esc work as usual.
 const menu = $('#menu');
 let menuReturnFocus = null;
-function openMenu(e, anchor, label, items) {
+let menuToggle = null; // a button that opened the menu and closes it again when clicked
+// `toggle` names a menu that belongs to a button (like Sort); clicking that button again closes it.
+function openMenu(e, anchor, label, items, toggle = null) {
   menu.replaceChildren();
   menu.setAttribute('aria-label', label);
+  menu.dataset.for = toggle || '';
+  menuToggle = toggle ? anchor : null;
+  menuToggle?.setAttribute('aria-expanded', 'true');
   for (const item of items) {
     if (item.separator) { const hr = document.createElement('div'); hr.className = 'menu-sep'; hr.role = 'separator'; menu.append(hr); continue; }
     if (item.heading) { const h = document.createElement('div'); h.className = 'menu-heading'; h.role = 'presentation'; h.textContent = item.heading; menu.append(h); continue; }
     const b = document.createElement('button');
     b.type = 'button';
-    b.role = 'menuitem';
+    b.role = item.checked != null ? 'menuitemradio' : 'menuitem';
+    if (item.checked != null) b.setAttribute('aria-checked', String(item.checked));
     b.tabIndex = -1;
-    b.className = `menu-item${item.danger ? ' danger' : ''}`;
+    b.className = `menu-item${item.danger ? ' danger' : ''}${item.checked != null ? ' radio' : ''}`;
     if (item.disabled) b.setAttribute('aria-disabled', 'true');
     const l = document.createElement('span'); l.textContent = item.label; b.append(l);
     if (item.hint) { const h = document.createElement('span'); h.className = 'menu-hint'; h.textContent = item.hint; b.append(h); }
@@ -781,12 +859,15 @@ function openMenu(e, anchor, label, items) {
   y = y + h > innerHeight - 8 ? Math.max(8, y - h) : y;
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
-  menuItems().find((b) => !b.hasAttribute('aria-disabled'))?.focus();
+  const usable = menuItems().filter((b) => !b.hasAttribute('aria-disabled'));
+  (usable.find((b) => b.getAttribute('aria-checked') === 'true') || usable[0])?.focus();
 }
 const menuItems = () => [...menu.querySelectorAll('.menu-item')];
 function closeMenu(restoreFocus = true) {
   if (menu.hidden) return;
   menu.hidden = true;
+  menuToggle?.setAttribute('aria-expanded', 'false');
+  menuToggle = null;
   if (restoreFocus && menuReturnFocus?.isConnected) menuReturnFocus.focus();
   menuReturnFocus = null;
 }
@@ -803,7 +884,9 @@ menu.addEventListener('keydown', (e) => {
   e.preventDefault();
   items[j]?.focus();
 });
-document.addEventListener('pointerdown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(false); }, true);
+document.addEventListener('pointerdown', (e) => {
+  if (!menu.hidden && !menu.contains(e.target) && !menuToggle?.contains(e.target)) closeMenu(false);
+}, true);
 addEventListener('blur', () => closeMenu(false));
 addEventListener('resize', () => closeMenu(false));
 addEventListener('scroll', () => closeMenu(false), { passive: true });
@@ -1097,6 +1180,7 @@ function closeNews({ fromHistory = false } = {}) {
   news.btn.setAttribute('aria-expanded', 'false');
   if (location.hash === '#news') history.replaceState(null, '', location.pathname);
   render();
+  if (LIVE_SORTS.has(state.sort)) resortSoon(800);
   news.btn.focus();
 }
 news.btn.addEventListener('click', () => (news.open ? closeNews() : openNews()));
