@@ -260,7 +260,9 @@ class Tile {
 
   setQuote(q) {
     Object.assign(this.quote, Object.fromEntries(Object.entries(q).filter(([, v]) => v != null)));
+    this.quote.price_source = q.price_source ?? null; // cleared when Yahoo goes quiet and TradingView takes over
     const quote = this.quote;
+    setAttr(this.ui.price, 'title', quote.price_source ? `Live price from ${quote.price_source}` : '');
     if (quote.description && !this.info?.description) setText(this.ui.name, quote.description);
     if (this.decimals == null && (quote.pricescale || quote.lp != null)) this.decimals = decimalsFor(quote.pricescale, quote.lp);
 

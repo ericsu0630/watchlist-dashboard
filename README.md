@@ -45,6 +45,9 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   The mouse wheel scrolls the page, not the chart.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol.
+- **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late, so the price and day change on Taiwan tiles come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
+  The candles still come from TradingView, so during trading the newest candle can trail the price shown above it by up to 15 minutes.
+  If Yahoo stops answering, the tile goes back to TradingView's delayed price and shows the delay tag.
 
 Your symbol list, their order, the sort setting, the candle interval and the candle width are saved in your browser.
 
@@ -75,6 +78,7 @@ server.js            Express + WebSocket server. Shares one upstream stream per 
 lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one shared quote session, all on one connection
 lib/news.js          Headlines per symbol: 24-hour window (older fallback for quiet symbols), duplicates merged, 5-minute cache
 lib/yahoo-tw-news.js Yahoo股市 (zh-TW) headlines for Taiwan listings (TWSE:2330 -> 2330.TW, TPEX:6488 -> 6488.TWO), read from each stock's news page
+lib/yahoo-tw-quotes.js Live Yahoo股市 prices for Taiwan listings: one shared poll every 5 s for all of them (every 60 s after the close)
 lib/demo-source.js   Simulated data and sample headlines for `npm run demo`
 public/index.html    Page layout
 public/styles.css    Dark theme

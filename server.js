@@ -240,6 +240,7 @@ function pickQuote(q) {
     lp: q.lp, ch: q.ch, chp: q.chp, currency_code: q.currency_code, description: q.description,
     exchange: q.exchange, short_name: q.short_name, pricescale: q.pricescale,
     current_session: q.current_session, update_mode: q.update_mode, lp_time: q.lp_time,
+    price_source: q.price_source ?? null, // set when the price comes from somewhere other than TradingView
   };
 }
 
