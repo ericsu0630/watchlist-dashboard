@@ -400,6 +400,7 @@ function addSymbol(sym) {
     save();
     render();
     sendWatch();
+    if (!news.open) warmNews();
   }
   // In the news view, stay there and include the new symbol's headlines.
   if (news.open) { loadNews(); return; }
@@ -722,7 +723,7 @@ function openNews({ push = true } = {}) {
   scrollTo(0, 0);
   news.back.focus();
   loadNews();
-  news.timer = setInterval(loadNews, NEWS_REFRESH_MS);
+  news.timer = setInterval(() => loadNews({ fresh: true, background: true }), NEWS_REFRESH_MS);
   news.tick = setInterval(renderNews, 60_000); // keep "x min ago" current
 }
 function closeNews({ fromHistory = false } = {}) {
@@ -739,28 +740,35 @@ function closeNews({ fromHistory = false } = {}) {
 }
 news.btn.addEventListener('click', () => (news.open ? closeNews() : openNews()));
 news.back.addEventListener('click', () => closeNews());
-news.refresh.addEventListener('click', () => loadNews());
+news.refresh.addEventListener('click', () => loadNews({ fresh: true }));
 addEventListener('popstate', () => (location.hash === '#news' ? openNews({ push: false }) : closeNews({ fromHistory: true })));
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && news.open && document.activeElement !== input) closeNews();
 });
 
-async function loadNews() {
+// Opening the view takes what the server already has (instant, possibly a few minutes old) and then,
+// if the server says newer headlines are on the way, asks again and waits for them (`fresh`).
+// The 5-minute refresh and the refresh button always wait for fresh headlines.
+async function loadNews({ fresh = false, background = false } = {}) {
   const seq = ++news.seq;
   if (!state.symbols.length) { news.data = { items: [], failed: [] }; renderNews(); return; }
   news.loading = true;
   news.refresh.classList.add('spinning');
-  news.list.classList.toggle('refreshing', !!news.data);
+  // Dim the list only when the user asked for new headlines; a background update leaves it readable.
+  news.list.classList.toggle('refreshing', !!news.data && !background);
   if (!news.data) news.list.innerHTML = '<div class="news-state"><p>Loading headlines…</p></div>';
+  let again = false;
   try {
-    const res = await fetch(`/api/news?symbols=${encodeURIComponent(state.symbols.join(','))}`);
+    const res = await fetch(`/api/news?symbols=${encodeURIComponent(state.symbols.join(','))}${fresh ? '&fresh=1' : ''}`);
     const data = await res.json();
     if (seq !== news.seq) return;
     if (!res.ok) throw new Error(data.error || 'Headlines are unavailable right now.');
     news.data = data;
+    again = data.refreshing && !fresh;
   } catch (err) {
     if (seq !== news.seq) return;
-    news.data = { error: err.message || 'Headlines are unavailable right now.' };
+    // A failed background update keeps the headlines already on screen.
+    if (!(background && news.data && !news.data.error)) news.data = { error: err.message || 'Headlines are unavailable right now.' };
   } finally {
     if (seq === news.seq) {
       news.loading = false;
@@ -769,7 +777,20 @@ async function loadNews() {
       renderNews();
     }
   }
+  if (again && seq === news.seq && news.open) loadNews({ fresh: true, background: true });
 }
+
+// Ask the server to start fetching headlines before the News view is opened, so it opens instantly.
+let lastWarm = { key: '', at: 0 };
+function warmNews() {
+  const key = state.symbols.join(',');
+  if (!key || (key === lastWarm.key && Date.now() - lastWarm.at < 60_000)) return;
+  lastWarm = { key, at: Date.now() };
+  fetch(`/api/news/warm?symbols=${encodeURIComponent(key)}`, { method: 'POST' }).catch(() => {});
+}
+setTimeout(warmNews, 3000); // after the charts have had their turn
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') warmNews(); });
+news.btn.addEventListener('pointerenter', warmNews);
 
 function timeAgo(t) {
   const m = Math.max(0, Math.round((Date.now() / 1000 - t) / 60));
@@ -805,7 +826,7 @@ function renderNews() {
   const shown = news.filter ? items.filter((it) => it.symbols.includes(news.filter)) : items;
 
   const win = `${d.windowHours || 24} hours`;
-  const updated = d.fetchedAt ? ` Updated ${clock(d.fetchedAt)}.` : '';
+  const updated = d.refreshing ? ' Checking for newer headlines…' : d.fetchedAt ? ` Updated ${clock(d.fetchedAt)}.` : '';
   const recentN = items.filter((it) => !it.older).length;
   const olderN = items.length - recentN;
   const plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;

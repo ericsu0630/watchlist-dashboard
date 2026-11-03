@@ -46,16 +46,23 @@ for (const family of ['barlow-semi-condensed', 'inter-tight']) {
 app.get('/api/config', (_req, res) => res.json({ demo: DEMO }));
 const news = createNewsService(source);
 const SYMBOL_RE = /^[\w.!&\-]+:[\w.!&\-]+$/;
+const newsSymbols = (req) => [...new Set(String(req.query.symbols || '').split(',').map((s) => s.trim()).filter((s) => SYMBOL_RE.test(s)))].slice(0, 80);
 // Latest headlines (last 24 hours) for the given symbols: /api/news?symbols=NASDAQ:AAPL,TWSE:2330
+// Answers at once from recent headlines (`refreshing: true` while newer ones load); add &fresh=1 to wait for them.
 app.get('/api/news', async (req, res) => {
-  const symbols = [...new Set(String(req.query.symbols || '').split(',').map((s) => s.trim()).filter((s) => SYMBOL_RE.test(s)))].slice(0, 80);
+  const symbols = newsSymbols(req);
   if (!symbols.length) return res.json({ items: [], failed: [], windowHours: NEWS_WINDOW_HOURS, fetchedAt: Math.floor(Date.now() / 1000) });
   try {
-    res.json(await news.headlines(symbols));
+    res.json(await news.headlines(symbols, { fresh: req.query.fresh === '1' }));
   } catch (err) {
     console.error('[news]', err.code || '', err.message);
     res.status(502).json({ error: 'Headlines are unavailable right now.' });
   }
+});
+// Starts loading headlines in the background so the News view opens instantly later.
+app.post('/api/news/warm', (req, res) => {
+  news.warm(newsSymbols(req));
+  res.status(204).end();
 });
 app.get('/api/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
