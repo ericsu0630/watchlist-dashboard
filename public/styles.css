@@ -114,7 +114,7 @@ button { font: inherit; color: inherit; }
 .results .r-desc { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .results .r-tag { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .results .r-tag b { font-weight: 500; color: var(--ink-2); }
-.results li.added .r-tag::after { content: 'On board'; margin-left: 8px; color: var(--up); }
+.results .r-in { margin-left: 8px; color: var(--up); } /* which tab already has this symbol */
 .results .r-note { display: block; padding: 10px; color: var(--muted); cursor: default; grid-template-columns: none; }
 
 .controls { justify-self: end; display: flex; align-items: center; gap: 18px; }
@@ -169,6 +169,83 @@ button { font: inherit; color: inherit; }
 .demo-note { padding: 8px 24px; font-size: 13px; color: var(--amber); background: #f2c46d12; border-bottom: 1px solid #f2c46d26; }
 .demo-note code { font-size: 12px; padding: 1px 5px; border-radius: 4px; background: #f2c46d1f; }
 
+/* ---------- Tabs ---------- */
+/* Second row of the top bar, so the tabs stay in reach however far the grid is scrolled.
+   The active tab's underline sits on the bar's bottom rule. */
+.tabs {
+  grid-column: 1 / -1; display: flex; align-items: flex-end; gap: 6px; min-width: 0;
+  margin: -4px 0 -13px;
+}
+.tab-list { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.tab-list::-webkit-scrollbar { display: none; }
+.tab {
+  position: relative; flex: none; display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 12px;
+  background: none; border: 0; border-radius: 7px 7px 0 0; cursor: pointer;
+  font: 600 15px/1 var(--num); letter-spacing: .02em; color: var(--muted);
+}
+.tab:hover { color: var(--ink-2); background: color-mix(in srgb, var(--tile) 70%, transparent); }
+.tab[aria-selected="true"] { color: var(--ink); }
+.tab[aria-selected="true"]::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 0; height: 2px; border-radius: 2px 2px 0 0; background: var(--ink); }
+.tab:focus-visible { outline-offset: -2px; border-radius: 7px; }
+.tab-name { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-count {
+  min-width: 20px; height: 18px; padding: 0 5px; border-radius: 999px; display: grid; place-items: center;
+  font: 500 12px/1 var(--num); font-variant-numeric: tabular-nums; color: var(--muted); background: var(--tile); border: 1px solid var(--line);
+}
+.tab[aria-selected="true"] .tab-count { color: var(--ink-2); border-color: var(--line-strong); }
+.tab.drop-target { background: var(--active); color: var(--ink); box-shadow: inset 0 0 0 1px var(--accent); }
+.tab.flash .tab-count { animation: tab-flash 1.2s ease-out; }
+@keyframes tab-flash { from { color: var(--ink); border-color: var(--accent); background: var(--active); } }
+.tab-rename {
+  width: auto; height: 26px; padding: 0 6px; margin: 0 -6px; min-width: 0;
+  font: 600 15px/1 var(--num); letter-spacing: .02em; color: var(--ink);
+  background: var(--surface-focus); border: 1px solid var(--accent); border-radius: 6px; outline: none;
+}
+.tab-add {
+  flex: none; display: grid; place-items: center; width: 30px; height: 30px; margin-bottom: 4px; padding: 0;
+  background: none; border: 1px solid transparent; border-radius: 7px; cursor: pointer; color: var(--muted);
+}
+.tab-add:hover { color: var(--ink); background: var(--tile); border-color: var(--line-strong); }
+.tab-add svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+/* ---------- Right-click menu and confirmation ---------- */
+.menu {
+  position: fixed; z-index: 50; min-width: 200px; max-width: 280px; max-height: min(420px, 80vh); overflow-y: auto; padding: 5px;
+  background: var(--surface-raised); border: 1px solid var(--line-strong); border-radius: 10px;
+  box-shadow: 0 18px 40px -12px #000c;
+}
+.menu-heading { padding: 7px 10px 4px; font-size: 12px; color: var(--muted); }
+.menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; height: 32px; padding: 0 10px;
+  background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left; font-size: 13.5px; color: var(--ink);
+}
+.menu-item span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-item:hover, .menu-item:focus { background: var(--row-highlight); outline: none; }
+.menu-item:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+.menu-item.danger { color: var(--down); }
+.menu-item[aria-disabled="true"] { color: var(--muted); cursor: default; background: none; }
+.menu-hint { flex: none; font: 500 12px/1 var(--num); font-variant-numeric: tabular-nums; color: var(--muted); }
+.menu-sep { height: 1px; margin: 5px 4px; background: var(--line); }
+
+.confirm {
+  width: min(420px, calc(100vw - 32px)); padding: 22px 22px 18px;
+  color: var(--ink); background: var(--tile); border: 1px solid var(--line-strong); border-radius: 12px;
+  box-shadow: 0 24px 60px -16px #000;
+}
+.confirm::backdrop { background: #0009; }
+.confirm h2 { margin: 0 0 8px; font: 600 22px/1.15 var(--num); overflow-wrap: anywhere; }
+.confirm p { margin: 0 0 20px; color: var(--ink-2); font-size: 14px; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.confirm-actions button {
+  height: 36px; padding: 0 14px; border-radius: 8px; cursor: pointer;
+  background: var(--tile); border: 1px solid var(--line-strong); color: var(--ink); font: 600 14px/1 var(--num); letter-spacing: .02em;
+}
+.confirm-actions button:hover { background: var(--active); }
+.confirm-actions .danger { color: #1a0d0f; background: var(--down); border-color: var(--down); }
+.confirm-actions .danger:hover { background: color-mix(in srgb, var(--down) 85%, white); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 /* ---------- Grid ---------- */
 main { padding: 10px 10px 32px; }
 .grid {
@@ -178,7 +255,7 @@ main { padding: 10px 10px 32px; }
 }
 @media (max-width: 1279px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 959px)  { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bar { grid-template-columns: auto 1fr; } .controls { grid-column: 1 / -1; justify-self: stretch; justify-content: space-between; } }
-@media (max-width: 599px)  { .grid { grid-template-columns: 1fr; } main { padding: 8px 8px 32px; } .bar { padding: 10px 12px; grid-template-columns: minmax(0, 1fr); } .bar > * { min-width: 0; } .brand .count { display: none; } .controls { flex-wrap: wrap; justify-content: flex-start; gap: 10px 12px; } .zoom input { width: 96px; } }
+@media (max-width: 599px)  { .grid { grid-template-columns: 1fr; } main { padding: 8px 8px 32px; } .bar { padding: 10px 12px; grid-template-columns: minmax(0, 1fr); } .tabs { margin-bottom: -11px; } .bar > * { min-width: 0; } .brand .count { display: none; } .controls { flex-wrap: wrap; justify-content: flex-start; gap: 10px 12px; } .zoom input { width: 96px; } }
 
 .tile {
   position: relative;

@@ -22,8 +22,8 @@ const store = {
   get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
   set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable */ } },
 };
+const SYMBOL_RE = /^[\w.!&\-]+:[\w.!&\-]+$/;
 const state = {
-  symbols: store.get('pd.symbols', null) ?? DEFAULTS.slice(),
   tf: store.get('pd.tf', DEFAULT_TIMEFRAME),
 };
 if (!TIMEFRAMES.some((t) => t.id === state.tf)) state.tf = DEFAULT_TIMEFRAME;
@@ -34,13 +34,49 @@ const ZOOM_MIN = 1, ZOOM_MAX = 15, ZOOM_DEFAULT = 5;
 const clampZoom = (px) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(Number(px) || ZOOM_DEFAULT)));
 state.zoom = clampZoom(store.get('pd.zoomPx', ZOOM_DEFAULT));
 
-// Sort order: 'asc' / 'desc' by ticker, or 'none' once the user arranges tiles themselves.
+// Sort order: 'asc' / 'desc' by ticker, or 'none' once the user arranges tiles themselves. Each tab has its own.
 const SORT_MODES = ['asc', 'desc', 'none'];
-state.sort = store.get('pd.sort', 'none');
-if (!SORT_MODES.includes(state.sort)) state.sort = 'none';
+
+// Tabs group the symbols: [{ id, name, symbols, sort }]. A symbol is in at most one tab.
+// Boards from before tabs existed (pd.symbols, pd.sort) become a single "Default" tab.
+const TAB_NAME_MAX = 40;
+const newTabId = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+function loadTabs() {
+  let raw = store.get('pd.tabs', null);
+  if (!Array.isArray(raw) || !raw.length) {
+    raw = [{ id: 'default', name: 'Default', symbols: store.get('pd.symbols', null) ?? DEFAULTS.slice(), sort: store.get('pd.sort', 'none') }];
+  }
+  const seenSymbols = new Set(), seenIds = new Set();
+  const tabs = raw.filter((t) => t && typeof t === 'object').map((t) => {
+    let id = typeof t.id === 'string' && t.id ? t.id : newTabId();
+    if (seenIds.has(id)) id = newTabId();
+    seenIds.add(id);
+    return {
+      id,
+      name: (typeof t.name === 'string' && t.name.trim() ? t.name.trim() : 'Untitled').slice(0, TAB_NAME_MAX),
+      // Keep the first copy of any symbol that somehow appears twice.
+      symbols: (Array.isArray(t.symbols) ? t.symbols : []).filter((s) => typeof s === 'string' && SYMBOL_RE.test(s) && !seenSymbols.has(s) && seenSymbols.add(s)),
+      sort: SORT_MODES.includes(t.sort) ? t.sort : 'none',
+    };
+  });
+  return tabs.length ? tabs : [{ id: 'default', name: 'Default', symbols: [], sort: 'none' }];
+}
+state.tabs = loadTabs();
+state.activeTab = store.get('pd.activeTab', null);
+if (!state.tabs.some((t) => t.id === state.activeTab)) state.activeTab = state.tabs[0].id;
+
+const activeTab = () => state.tabs.find((t) => t.id === state.activeTab);
+const tabById = (id) => state.tabs.find((t) => t.id === id);
+const tabOf = (sym) => state.tabs.find((t) => t.symbols.includes(sym));
+const allSymbols = () => state.tabs.flatMap((t) => t.symbols);
+// The grid, sorting, reordering and live data all work on the open tab, through these two.
+Object.defineProperty(state, 'symbols', { get: () => activeTab().symbols, set: (v) => { activeTab().symbols = v; } });
+Object.defineProperty(state, 'sort', { get: () => activeTab().sort, set: (v) => { activeTab().sort = v; } });
 
 const save = () => {
-  store.set('pd.symbols', state.symbols); store.set('pd.tf', state.tf); store.set('pd.zoomPx', state.zoom); store.set('pd.sort', state.sort);
+  store.set('pd.tabs', state.tabs); store.set('pd.activeTab', state.activeTab);
+  store.set('pd.tf', state.tf); store.set('pd.zoomPx', state.zoom);
+  store.set('pd.symbols', allSymbols()); // flat list, still readable by older versions of the page
 };
 save();
 
@@ -58,6 +94,7 @@ const toLocal = (t) => t - new Date(t * 1000).getTimezoneOffset() * 60;
 const tfPreset = () => TIMEFRAMES.find((t) => t.id === state.tf);
 const isIntraday = () => /^\d+$/.test(tfPreset().interval);
 const splitSymbol = (id) => { const i = id.indexOf(':'); return [id.slice(0, i), id.slice(i + 1)]; };
+const ticker = (sym) => splitSymbol(sym)[1];
 
 function decimalsFor(pricescale, price) {
   if (pricescale > 0) return Math.max(0, Math.round(Math.log10(pricescale)));
@@ -382,19 +419,36 @@ class Tile {
 
 // ------------------------------------------------------------ Board
 function render() {
-  // Create / remove tiles and put them in state order.
-  for (const [sym, tile] of tiles) if (!state.symbols.includes(sym)) { tile.destroy(); tiles.delete(sym); }
-  state.symbols.forEach((sym, i) => {
+  // Tiles exist for symbols in any tab; only the open tab's are in the grid. The others keep their
+  // candles in memory (their charts are freed once they leave the page), so switching back is quick.
+  const all = new Set(allSymbols());
+  for (const [sym, tile] of tiles) if (!all.has(sym)) { tile.destroy(); tiles.delete(sym); }
+  const shown = state.symbols;
+  for (const el of [...grid.children]) if (!shown.includes(el.dataset.symbol)) el.remove();
+  shown.forEach((sym, i) => {
     let tile = tiles.get(sym);
     if (!tile) { tile = new Tile(sym); tiles.set(sym, tile); }
     if (grid.children[i] !== tile.el) grid.insertBefore(tile.el, grid.children[i] || null);
   });
-  $('#empty').hidden = state.symbols.length > 0 || news.open;
-  $('#count').textContent = state.symbols.length ? `${state.symbols.length} symbol${state.symbols.length === 1 ? '' : 's'}` : '';
+  const total = all.size;
+  $('#empty').hidden = shown.length > 0 || news.open;
+  if (!shown.length) {
+    const named = state.tabs.length > 1 || activeTab().name !== 'Default';
+    $('#empty-title').textContent = total && named ? `Nothing in “${activeTab().name}” yet` : 'Nothing on your board yet';
+    $('#empty-text').textContent = total
+      ? 'Search above to add a symbol to this tab, or right-click a tile in another tab and move it here. Or pick one to begin:'
+      : 'Search for a stock, ETF, index, currency pair or crypto pair above to start tracking it. Or pick one to begin:';
+  }
+  $('#count').textContent = total ? `${total} symbol${total === 1 ? '' : 's'}` : '';
+  renderTabs();
 }
 
+// A symbol can only be in one tab. If it's already in one, that tab opens and the tile is pointed out;
+// otherwise it joins the open tab.
 function addSymbol(sym) {
-  if (!state.symbols.includes(sym)) {
+  const home = tabOf(sym);
+  if (home && home !== activeTab()) switchTab(home.id, { scroll: false });
+  if (!home) {
     state.symbols.push(sym); // at the end when unsorted…
     applySort(); // …or in its sorted place
     save();
@@ -403,13 +457,16 @@ function addSymbol(sym) {
     if (!news.open) warmNews();
   }
   // In the news view, stay there and include the new symbol's headlines.
-  if (news.open) { loadNews(); return; }
+  if (news.open) { if (!home) loadNews(); return; }
   const tile = tiles.get(sym);
   tile.el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
   tile.el.classList.remove('flash'); void tile.el.offsetWidth; tile.el.classList.add('flash');
+  if (home) announce(`${ticker(sym)} is already in ${home.name}`);
 }
 function removeSymbol(sym) {
-  state.symbols = state.symbols.filter((s) => s !== sym);
+  const tab = tabOf(sym);
+  if (!tab) return;
+  tab.symbols = tab.symbols.filter((s) => s !== sym);
   save();
   render();
   sendWatch();
@@ -425,6 +482,25 @@ function moveSymbol(sym, delta) {
   render();
   tiles.get(sym).ui.grip.focus();
 }
+// Moves a symbol into another tab, in that tab's sorted place (or at its end when it's unsorted).
+function moveToTab(sym, tabId, { hadFocus = null } = {}) {
+  const from = tabOf(sym), to = tabById(tabId);
+  if (!from || !to || from === to) return;
+  const wasShown = from === activeTab();
+  const next = wasShown ? state.symbols[state.symbols.indexOf(sym) + 1] ?? state.symbols[state.symbols.indexOf(sym) - 1] : null;
+  // Was the tile focused (before any menu took focus)?
+  hadFocus = wasShown && (hadFocus ?? tiles.get(sym)?.el.contains(document.activeElement));
+  from.symbols = from.symbols.filter((s) => s !== sym);
+  to.symbols.push(sym);
+  applySort(to);
+  save();
+  render();
+  sendWatch();
+  flashTab(to.id);
+  announce(`Moved ${ticker(sym)} to ${to.name}`);
+  // Keyboard users keep their place: the neighbouring tile, or the tab itself when this tab is now empty.
+  if (hadFocus) (next ? tiles.get(next).ui.grip : tabButton(state.activeTab))?.focus();
+}
 
 // ------------------------------------------------------------ Sort
 const tickerCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -432,10 +508,10 @@ function compareSymbols(a, b) {
   const [ea, ta] = splitSymbol(a), [eb, tb] = splitSymbol(b);
   return tickerCollator.compare(ta, tb) || tickerCollator.compare(ea, eb);
 }
-function applySort() {
-  if (state.sort === 'none') return;
-  const dir = state.sort === 'asc' ? 1 : -1;
-  state.symbols.sort((a, b) => dir * compareSymbols(a, b));
+function applySort(tab = activeTab()) {
+  if (tab.sort === 'none') return;
+  const dir = tab.sort === 'asc' ? 1 : -1;
+  tab.symbols.sort((a, b) => dir * compareSymbols(a, b));
 }
 const sortBtn = $('#sort');
 const SORT_UI = {
@@ -458,6 +534,290 @@ sortBtn.addEventListener('click', () => {
 });
 setSort(state.sort);
 applySort();
+
+// ------------------------------------------------------------ Tabs
+const tabList = $('#tab-list');
+const tabButton = (id) => tabList.querySelector(`[data-tab="${CSS.escape(id)}"]`);
+let renaming = null; // id of the tab whose name is being edited
+
+function renderTabs() {
+  if (renaming) return; // don't replace the name field while it's being typed in
+  const focusedTab = tabList.contains(document.activeElement) ? document.activeElement.dataset.tab : null;
+  tabList.replaceChildren(...state.tabs.map((t) => {
+    const b = document.createElement('button');
+    const on = t.id === state.activeTab;
+    b.type = 'button';
+    b.role = 'tab';
+    b.id = `tab-${t.id}`;
+    b.className = 'tab';
+    b.dataset.tab = t.id;
+    b.tabIndex = on ? 0 : -1;
+    b.setAttribute('aria-selected', String(on));
+    b.setAttribute('aria-controls', 'grid');
+    b.title = 'Double-click to rename. Right-click for more.';
+    const name = document.createElement('span');
+    name.className = 'tab-name';
+    name.textContent = t.name;
+    const count = document.createElement('span');
+    count.className = 'tab-count';
+    count.textContent = t.symbols.length;
+    count.setAttribute('aria-label', `${t.symbols.length} symbol${t.symbols.length === 1 ? '' : 's'}`);
+    b.append(name, count);
+    return b;
+  }));
+  grid.setAttribute('aria-labelledby', `tab-${state.activeTab}`);
+  if (focusedTab) tabButton(focusedTab)?.focus();
+}
+
+function switchTab(id, { scroll = true } = {}) {
+  if (id === state.activeTab || !tabById(id)) return;
+  state.activeTab = id;
+  setSort(state.sort); // the sort button shows this tab's setting
+  save();
+  render();
+  sendWatch();
+  if (scroll && !news.open) scrollTo(0, 0);
+}
+
+function uniqueTabName(base) {
+  const names = new Set(state.tabs.map((t) => t.name));
+  if (!names.has(base)) return base;
+  for (let i = 2; ; i++) if (!names.has(`${base} ${i}`)) return `${base} ${i}`;
+}
+function createTab({ open = true } = {}) {
+  const tab = { id: newTabId(), name: uniqueTabName('New tab'), symbols: [], sort: 'none' };
+  state.tabs.push(tab);
+  save();
+  if (open) switchTab(tab.id);
+  else render();
+  return tab;
+}
+
+// Edits a tab's name in place: Enter or leaving the field keeps it, Esc cancels.
+function startRename(id) {
+  const tab = tabById(id);
+  const b = tabButton(id);
+  if (!tab || !b || renaming) return;
+  renaming = id;
+  const input = document.createElement('input');
+  input.className = 'tab-rename';
+  input.value = tab.name;
+  input.maxLength = TAB_NAME_MAX;
+  input.setAttribute('aria-label', 'Tab name');
+  input.size = Math.max(6, tab.name.length + 1);
+  b.querySelector('.tab-name').replaceWith(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = (keep) => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim().slice(0, TAB_NAME_MAX);
+    if (keep && name && name !== tab.name) { tab.name = name; save(); }
+    renaming = null;
+    render(); // also refreshes the empty-tab message, which names the tab
+    tabButton(id)?.focus();
+  };
+  input.addEventListener('input', () => { input.size = Math.max(6, input.value.length + 1); });
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation(); // keep typing out of the tab list's arrow keys and the page's "/" shortcut
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('click', (e) => e.stopPropagation());
+  input.addEventListener('dblclick', (e) => e.stopPropagation());
+}
+
+// Any tab can go except the last one left. A tab with symbols asks first, since its symbols go with it.
+async function deleteTab(id) {
+  const tab = tabById(id);
+  if (!tab || state.tabs.length === 1) return;
+  if (tab.symbols.length) {
+    const list = tab.symbols.map(ticker);
+    const shown = list.length > 6 ? `${list.slice(0, 6).join(', ')} and ${list.length - 6} more` : list.join(', ');
+    const ok = await confirmDialog({
+      title: `Delete “${tab.name}”?`,
+      body: `Its ${list.length} symbol${list.length === 1 ? '' : 's'} (${shown}) will be removed from your board. To keep any, move them to another tab first.`,
+      ok: 'Delete tab',
+    });
+    if (!ok) { tabButton(id)?.focus(); return; }
+  }
+  const i = state.tabs.indexOf(tab);
+  state.tabs.splice(i, 1);
+  if (state.activeTab === id) {
+    state.activeTab = state.tabs[Math.max(0, i - 1)].id;
+    setSort(state.sort);
+  }
+  save();
+  render();
+  sendWatch();
+  announce(`Deleted ${tab.name}`);
+  tabButton(state.activeTab)?.focus();
+}
+
+function flashTab(id) {
+  const b = tabButton(id);
+  if (!b) return;
+  b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
+}
+const announcer = $('#announce');
+function announce(text) { announcer.textContent = ''; requestAnimationFrame(() => { announcer.textContent = text; }); }
+
+tabList.addEventListener('click', (e) => {
+  const b = e.target.closest('.tab');
+  if (b) switchTab(b.dataset.tab);
+});
+tabList.addEventListener('dblclick', (e) => {
+  const b = e.target.closest('.tab');
+  if (b) startRename(b.dataset.tab);
+});
+tabList.addEventListener('keydown', (e) => {
+  const b = e.target.closest('.tab');
+  if (!b) return;
+  const i = state.tabs.findIndex((t) => t.id === b.dataset.tab);
+  let j = null;
+  if (e.key === 'ArrowRight') j = (i + 1) % state.tabs.length;
+  else if (e.key === 'ArrowLeft') j = (i - 1 + state.tabs.length) % state.tabs.length;
+  else if (e.key === 'Home') j = 0;
+  else if (e.key === 'End') j = state.tabs.length - 1;
+  else if (e.key === 'F2') { e.preventDefault(); startRename(b.dataset.tab); return; }
+  else if (e.key === 'Delete') { e.preventDefault(); deleteTab(b.dataset.tab); return; }
+  if (j == null) return;
+  e.preventDefault();
+  switchTab(state.tabs[j].id);
+  tabButton(state.tabs[j].id)?.focus();
+});
+tabList.addEventListener('contextmenu', (e) => {
+  const b = e.target.closest('.tab');
+  if (!b || renaming) return;
+  e.preventDefault();
+  const id = b.dataset.tab;
+  const last = state.tabs.length === 1;
+  openMenu(e, b, `${tabById(id).name} tab`, [
+    { label: 'Rename', hint: 'F2', action: () => startRename(id) },
+    { label: 'Delete tab', danger: true, disabled: last, hint: last ? 'Last tab' : null, action: () => deleteTab(id) },
+  ]);
+});
+$('#tab-add').addEventListener('click', () => {
+  const tab = createTab();
+  startRename(tab.id);
+});
+
+// Drop a dragged tile on a tab to move it there.
+tabList.addEventListener('dragover', (e) => {
+  const b = e.target.closest('.tab');
+  if (!b || !dragSym || b.dataset.tab === tabOf(dragSym)?.id) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  for (const t of tabList.querySelectorAll('.drop-target')) if (t !== b) t.classList.remove('drop-target');
+  b.classList.add('drop-target');
+});
+tabList.addEventListener('dragleave', (e) => {
+  const b = e.target.closest('.tab');
+  if (b && !b.contains(e.relatedTarget)) b.classList.remove('drop-target');
+});
+tabList.addEventListener('drop', (e) => {
+  const b = e.target.closest('.tab');
+  if (!b || !dragSym) return;
+  e.preventDefault();
+  b.classList.remove('drop-target');
+  moveToTab(dragSym, b.dataset.tab);
+});
+
+// Right-click a tile (or press the context-menu key / Shift+F10 on it): move it to another tab, or remove it.
+grid.addEventListener('contextmenu', (e) => {
+  const el = e.target.closest('.tile');
+  if (!el) return;
+  e.preventDefault();
+  const sym = el.dataset.symbol;
+  const hadFocus = el.contains(document.activeElement);
+  const others = state.tabs.filter((t) => t.id !== state.activeTab);
+  openMenu(e, $('.tile-head', el), `${ticker(sym)} actions`, [
+    { heading: `Move ${ticker(sym)} to` },
+    ...others.map((t) => ({ label: t.name, hint: String(t.symbols.length), action: () => moveToTab(sym, t.id, { hadFocus }) })),
+    { label: 'New tab…', action: () => { const t = createTab({ open: false }); moveToTab(sym, t.id); startRename(t.id); } },
+    { separator: true },
+    { label: `Remove ${ticker(sym)}`, danger: true, action: () => removeSymbol(sym) },
+  ]);
+});
+
+// ------------------------------------------------------------ Menu and confirmation
+// One menu element, filled for whatever was right-clicked. Arrow keys, Home/End, Enter and Esc work as usual.
+const menu = $('#menu');
+let menuReturnFocus = null;
+function openMenu(e, anchor, label, items) {
+  menu.replaceChildren();
+  menu.setAttribute('aria-label', label);
+  for (const item of items) {
+    if (item.separator) { const hr = document.createElement('div'); hr.className = 'menu-sep'; hr.role = 'separator'; menu.append(hr); continue; }
+    if (item.heading) { const h = document.createElement('div'); h.className = 'menu-heading'; h.role = 'presentation'; h.textContent = item.heading; menu.append(h); continue; }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.role = 'menuitem';
+    b.tabIndex = -1;
+    b.className = `menu-item${item.danger ? ' danger' : ''}`;
+    if (item.disabled) b.setAttribute('aria-disabled', 'true');
+    const l = document.createElement('span'); l.textContent = item.label; b.append(l);
+    if (item.hint) { const h = document.createElement('span'); h.className = 'menu-hint'; h.textContent = item.hint; b.append(h); }
+    b.addEventListener('click', () => {
+      if (item.disabled) return;
+      const back = menuReturnFocus;
+      closeMenu(false);
+      item.action();
+      // Unless the action moved focus somewhere useful, go back to where the menu was opened from.
+      if (back?.isConnected && (!document.activeElement || document.activeElement === document.body || menu.contains(document.activeElement))) back.focus();
+    });
+    menu.append(b);
+  }
+  menuReturnFocus = document.activeElement;
+  menu.hidden = false;
+  // At the pointer; from the keyboard (no pointer position), under the item it belongs to.
+  const fromKeyboard = e.button !== 2 && !e.clientX && !e.clientY;
+  const r = anchor.getBoundingClientRect();
+  let x = fromKeyboard ? r.left + 8 : e.clientX, y = fromKeyboard ? r.bottom + 4 : e.clientY;
+  const w = menu.offsetWidth, h = menu.offsetHeight;
+  x = Math.max(8, Math.min(x, innerWidth - w - 8));
+  y = y + h > innerHeight - 8 ? Math.max(8, y - h) : y;
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  menuItems().find((b) => !b.hasAttribute('aria-disabled'))?.focus();
+}
+const menuItems = () => [...menu.querySelectorAll('.menu-item')];
+function closeMenu(restoreFocus = true) {
+  if (menu.hidden) return;
+  menu.hidden = true;
+  if (restoreFocus && menuReturnFocus?.isConnected) menuReturnFocus.focus();
+  menuReturnFocus = null;
+}
+menu.addEventListener('keydown', (e) => {
+  const items = menuItems().filter((b) => !b.hasAttribute('aria-disabled'));
+  const i = items.indexOf(document.activeElement);
+  let j = null;
+  if (e.key === 'ArrowDown') j = (i + 1) % items.length;
+  else if (e.key === 'ArrowUp') j = (i - 1 + items.length) % items.length;
+  else if (e.key === 'Home') j = 0;
+  else if (e.key === 'End') j = items.length - 1;
+  else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); closeMenu(); return; }
+  if (j == null) return;
+  e.preventDefault();
+  items[j]?.focus();
+});
+document.addEventListener('pointerdown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(false); }, true);
+addEventListener('blur', () => closeMenu(false));
+addEventListener('resize', () => closeMenu(false));
+addEventListener('scroll', () => closeMenu(false), { passive: true });
+
+const confirmEl = $('#confirm');
+function confirmDialog({ title, body, ok }) {
+  $('#confirm-title').textContent = title;
+  $('#confirm-body').textContent = body;
+  $('#confirm-ok').textContent = ok;
+  confirmEl.returnValue = '';
+  confirmEl.showModal();
+  $('#confirm button[value="cancel"]').focus(); // the safe choice, so a stray Enter doesn't delete
+  return new Promise((resolve) => confirmEl.addEventListener('close', () => resolve(confirmEl.returnValue === 'ok'), { once: true }));
+}
 
 // ------------------------------------------------------------ Drag to reorder
 let dragSym = null;
@@ -502,7 +862,7 @@ function setupDrag(tile) {
   });
 }
 const isAfter = (e, el) => { const r = el.getBoundingClientRect(); return e.clientX > r.left + r.width / 2; };
-const clearDropMarks = () => grid.querySelectorAll('.drop-before, .drop-after').forEach((n) => n.classList.remove('drop-before', 'drop-after'));
+const clearDropMarks = () => document.querySelectorAll('.drop-before, .drop-after, .drop-target').forEach((n) => n.classList.remove('drop-before', 'drop-after', 'drop-target'));
 
 // ------------------------------------------------------------ Timeframe
 const tfEl = $('#tf');
@@ -629,7 +989,7 @@ input.addEventListener('keydown', (e) => {
     const pick = results[active] || results[0];
     const typed = input.value.trim().toUpperCase();
     if (pick) choose(pick.id);
-    else if (/^[\w.!&\-]+:[\w.!&\-]+$/.test(typed)) choose(typed); // Exact EXCHANGE:SYMBOL
+    else if (SYMBOL_RE.test(typed)) choose(typed); // Exact EXCHANGE:SYMBOL
   } else if (e.key === 'Escape') { input.value = ''; closeResults(); input.blur(); }
 });
 input.addEventListener('blur', () => setTimeout(closeResults, 120));
@@ -660,10 +1020,10 @@ function drawResults(q) {
     list.innerHTML = `<li class="r-note">No symbols match “${escapeHtml(q)}”. Try the company name, or type EXCHANGE:SYMBOL and press Enter.</li>`;
   } else {
     list.innerHTML = results.map((r, i) => `
-      <li role="option" id="opt-${i}" data-i="${i}" aria-selected="${i === active}" class="${state.symbols.includes(r.id) ? 'added' : ''}">
+      <li role="option" id="opt-${i}" data-i="${i}" aria-selected="${i === active}"${tabOf(r.id) ? ' class="added"' : ''}>
         <span class="r-sym">${escapeHtml(r.symbol)}</span>
         <span class="r-desc">${escapeHtml(stripTags(r.description || ''))}</span>
-        <span class="r-tag"><b>${escapeHtml(r.exchange || '')}</b> ${escapeHtml(r.type || '')}</span>
+        <span class="r-tag"><b>${escapeHtml(r.exchange || '')}</b> ${escapeHtml(r.type || '')}${tabOf(r.id) ? `<span class="r-in">In ${escapeHtml(tabOf(r.id).name)}</span>` : ''}</span>
       </li>`).join('');
   }
   openResults();
@@ -710,12 +1070,12 @@ const news = {
   view: $('#news'), list: $('#news-list'), sub: $('#news-sub'), note: $('#news-note'), filterEl: $('#news-filter'),
   btn: $('#news-btn'), back: $('#news-back'), refresh: $('#news-refresh'),
 };
-const ticker = (sym) => splitSymbol(sym)[1];
 
 function openNews({ push = true } = {}) {
   if (news.open) return;
   news.open = true;
   grid.hidden = true; // hidden tiles count as off screen, so their charts are freed while reading
+  $('#tabs').hidden = true; // headlines cover every tab
   $('#empty').hidden = true;
   news.view.hidden = false;
   news.btn.setAttribute('aria-expanded', 'true');
@@ -733,6 +1093,7 @@ function closeNews({ fromHistory = false } = {}) {
   clearInterval(news.timer); clearInterval(news.tick);
   news.view.hidden = true;
   grid.hidden = false;
+  $('#tabs').hidden = false;
   news.btn.setAttribute('aria-expanded', 'false');
   if (location.hash === '#news') history.replaceState(null, '', location.pathname);
   render();
@@ -751,7 +1112,8 @@ document.addEventListener('keydown', (e) => {
 // The 5-minute refresh and the refresh button always wait for fresh headlines.
 async function loadNews({ fresh = false, background = false } = {}) {
   const seq = ++news.seq;
-  if (!state.symbols.length) { news.data = { items: [], failed: [] }; renderNews(); return; }
+  const symbols = allSymbols(); // every tab
+  if (!symbols.length) { news.data = { items: [], failed: [] }; renderNews(); return; }
   news.loading = true;
   news.refresh.classList.add('spinning');
   // Dim the list only when the user asked for new headlines; a background update leaves it readable.
@@ -759,7 +1121,7 @@ async function loadNews({ fresh = false, background = false } = {}) {
   if (!news.data) news.list.innerHTML = '<div class="news-state"><p>Loading headlines…</p></div>';
   let again = false;
   try {
-    const res = await fetch(`/api/news?symbols=${encodeURIComponent(state.symbols.join(','))}${fresh ? '&fresh=1' : ''}`);
+    const res = await fetch(`/api/news?symbols=${encodeURIComponent(symbols.join(','))}${fresh ? '&fresh=1' : ''}`);
     const data = await res.json();
     if (seq !== news.seq) return;
     if (!res.ok) throw new Error(data.error || 'Headlines are unavailable right now.');
@@ -783,7 +1145,7 @@ async function loadNews({ fresh = false, background = false } = {}) {
 // Ask the server to start fetching headlines before the News view is opened, so it opens instantly.
 let lastWarm = { key: '', at: 0 };
 function warmNews() {
-  const key = state.symbols.join(',');
+  const key = allSymbols().join(',');
   if (!key || (key === lastWarm.key && Date.now() - lastWarm.at < 60_000)) return;
   lastWarm = { key, at: Date.now() };
   fetch(`/api/news/warm?symbols=${encodeURIComponent(key)}`, { method: 'POST' }).catch(() => {});
@@ -839,7 +1201,8 @@ function renderNews() {
 
 function drawNews() {
   const d = news.data;
-  const n = state.symbols.length;
+  const symbols = allSymbols(); // headlines cover every tab
+  const n = symbols.length;
   if (!d) return;
   if (d.error) {
     news.sub.textContent = '';
@@ -850,7 +1213,7 @@ function drawNews() {
   }
   const items = d.items || [];
   // A filter for a symbol that's no longer on the board is dropped.
-  if (news.filter && !state.symbols.includes(news.filter)) news.filter = null;
+  if (news.filter && !symbols.includes(news.filter)) news.filter = null;
   const shown = news.filter ? items.filter((it) => it.symbols.includes(news.filter)) : items;
 
   const win = `${d.windowHours || 24} hours`;
@@ -863,13 +1226,13 @@ function drawNews() {
     : '';
 
   // Filter chips: All, then each symbol with its headline count, in board order.
-  const counts = new Map(state.symbols.map((s) => [s, 0]));
+  const counts = new Map(symbols.map((s) => [s, 0]));
   for (const it of items) for (const s of it.symbols) counts.set(s, (counts.get(s) || 0) + 1);
   const chip = (sym, label, count) =>
     `<button type="button" data-filter="${escapeHtml(sym)}" aria-pressed="${(news.filter || '') === sym}">${escapeHtml(label)} <span>${count}</span></button>`;
-  news.filterEl.innerHTML = n ? chip('', 'All', items.length) + state.symbols.map((s) => chip(s, ticker(s), counts.get(s) || 0)).join('') : '';
+  news.filterEl.innerHTML = n ? chip('', 'All', items.length) + symbols.map((s) => chip(s, ticker(s), counts.get(s) || 0)).join('') : '';
 
-  const failed = (d.failed || []).filter((s) => state.symbols.includes(s));
+  const failed = (d.failed || []).filter((s) => symbols.includes(s));
   news.note.hidden = !failed.length;
   if (failed.length) news.note.textContent = `Headlines for ${failed.map(ticker).join(', ')} couldn't be loaded. They'll be retried on the next refresh.`;
 

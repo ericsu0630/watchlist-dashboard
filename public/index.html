@@ -48,16 +48,37 @@
       </label>
       <div class="conn" id="conn" role="status" aria-live="polite"><i></i><span>Connecting</span></div>
     </div>
+
+    <nav class="tabs" id="tabs" aria-label="Symbol groups">
+      <div class="tab-list" id="tab-list" role="tablist" aria-label="Symbol groups"></div>
+      <button class="tab-add" id="tab-add" type="button" aria-label="Add a tab" title="Add a tab">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+      </button>
+    </nav>
   </header>
+
+  <!-- Right-click menus for tiles and tabs, and the delete-tab confirmation. -->
+  <div class="menu" id="menu" role="menu" hidden></div>
+  <dialog class="confirm" id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-body"></p>
+      <div class="confirm-actions">
+        <button type="submit" value="cancel">Cancel</button>
+        <button type="submit" value="ok" class="danger" id="confirm-ok">Delete</button>
+      </div>
+    </form>
+  </dialog>
+  <div class="sr-only" id="announce" role="status" aria-live="polite"></div>
 
   <div class="demo-note" id="demo-note" hidden>Demo mode: prices are simulated. Run <code>npm start</code> for live TradingView data.</div>
 
   <main>
-    <section class="grid" id="grid" aria-label="Tracked symbols"></section>
+    <section class="grid" id="grid" role="tabpanel"></section>
 
     <section class="empty" id="empty" hidden>
-      <h1>Nothing on your board yet</h1>
-      <p>Search for a stock, ETF, index, currency pair or crypto pair above to start tracking it. Or pick one to begin:</p>
+      <h1 id="empty-title">Nothing on your board yet</h1>
+      <p id="empty-text">Search for a stock, ETF, index, currency pair or crypto pair above to start tracking it. Or pick one to begin:</p>
       <div class="chips" id="chips"></div>
     </section>
 

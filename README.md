@@ -26,22 +26,28 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 
 ## Using the board
 
+- **Tabs**: the tabs under the top bar group your symbols. Click a tab to open it; the grid shows only that tab's symbols.
+  Click **+** after the last tab to add an empty one and type its name. Double-click a tab (or focus it and press F2) to rename it.
+  Right-click a tab to rename or delete it, or focus it and press Delete. Deleting a tab removes its symbols too, so it asks first unless the tab is empty. The last remaining tab can't be deleted.
+  To move a symbol to another tab, right-click its tile (or focus it and press Shift+F10) and pick the tab, or **New tab…** to start one. You can also drag a tile by its header onto a tab.
+  Boards from before tabs existed open with everything in a tab called "Default".
 - **Add a symbol**: press `/` or click the search bar, type a ticker or company name (`AAPL`, `2330`, `bitcoin`), then pick a result with the arrow keys and Enter.
   If you already know the full TradingView id, type it (for example `TWSE:0050`) and press Enter.
-- **News**: the News button left of the search bar swaps the charts for the latest headlines (last 24 hours) for every symbol on your board, newest first.
+  A symbol lives in one tab only. New symbols go into the open tab; if the symbol is already in a tab, that tab opens and its tile is pointed out instead (search results say which tab has it).
+- **News**: the News button left of the search bar swaps the charts for the latest headlines (last 24 hours) for every symbol on your board, across all tabs, newest first.
   Click a symbol chip to show only its headlines, and click a headline to open the full story in a new tab. The list refreshes every 5 minutes while open.
   It opens instantly: the server keeps recent headlines ready (it starts fetching them a few seconds after the page loads) and shows them at once while it checks for newer ones.
   Go back with the Charts button, Esc or your browser's back button. Headlines come from TradingView's public news feed. Taiwan-listed symbols (TWSE and TPEX) also get Traditional Chinese headlines from Yahoo股市; a story carried by both sources shows once.
   If a symbol has nothing in the last 24 hours, its latest three stories from the past two weeks appear in an "Earlier headlines" section at the end, so quiet days don't leave it blank.
-- **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every chart.
+- **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every chart, in every tab.
   For example, on 1W each candle is one week, and on 3M each candle is one quarter.
-- **Candle width**: the slider next to the interval switch sets how wide candles are on every chart, so they always match across tiles.
+- **Candle width**: the slider next to the interval switch sets how wide candles are on every chart, in every tab, so they always match across tiles.
   It steps from 1 px to 15 px per candle (default 5 px). Slide right for wider candles (fewer on screen) and left for narrower ones (more history). Double-click the slider to reset it.
   Drag left in a chart to see older candles. Because trading hours differ, the same number of hourly or 4-hour candles covers a different stretch of calendar time for a Taiwan stock or a crypto pair than for a US stock.
-- **Sort**: the sort button left of the interval switch orders tiles by ticker. Click it to switch between A–Z and Z–A (numbers sort naturally, so 0050 comes before 2330).
-  New symbols go into their sorted place. Moving a tile yourself switches the button to Unsorted, and new symbols then go at the end.
+- **Sort**: the sort button left of the interval switch orders the open tab's tiles by ticker. Click it to switch between A–Z and Z–A (numbers sort naturally, so 0050 comes before 2330).
+  Each tab keeps its own setting. New symbols, and symbols moved in from another tab, go into their sorted place. Moving a tile yourself switches the button to Unsorted, and new symbols then go at the end.
 - **Reorder**: drag a tile by its header. Or focus the ⋮⋮ handle (with Tab) and press ← / →.
-- **Remove**: hover a tile and click ×.
+- **Remove**: hover a tile and click ×, or right-click it and pick Remove.
 - **Inside a chart**: drag to pan and pinch to zoom that one chart. Double-click to reset it to the slider's width.
   The mouse wheel scrolls the page, not the chart.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
@@ -51,7 +57,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   1H and 4H candles still come from TradingView alone, so there the newest candle can trail the price by up to 15 minutes.
   If Yahoo stops answering, the tile goes back to TradingView's delayed price and shows the delay tag.
 
-Your symbol list, their order, the sort setting, the candle interval and the candle width are saved in your browser.
+Your tabs (names, symbols, order and sort settings), the open tab, the candle interval and the candle width are saved in your browser.
+Only the open tab's symbols stream live data. Switching back to a tab within a minute is instant; after that its prices catch up within a second or two.
 
 ## Real-time data (optional)
 
