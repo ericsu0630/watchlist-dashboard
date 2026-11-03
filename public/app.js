@@ -724,7 +724,7 @@ function openNews({ push = true } = {}) {
   news.back.focus();
   loadNews();
   news.timer = setInterval(() => loadNews({ fresh: true, background: true }), NEWS_REFRESH_MS);
-  news.tick = setInterval(renderNews, 60_000); // keep "x min ago" current
+  news.tick = setInterval(tickNews, 60_000); // keep "x min ago" current
 }
 function closeNews({ fromHistory = false } = {}) {
   if (!news.open) return;
@@ -808,8 +808,36 @@ function dayLabel(t) {
 }
 const clock = (t) => new Date(t * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
+// Updates the "x min ago" labels in place, so focus and hover aren't disturbed.
+// After midnight "Today" and "Yesterday" headings are out of date, so the list is rebuilt then.
+function tickNews() {
+  if (!news.open) return;
+  if (new Date().toDateString() !== news.renderedDay) { renderNews(); return; }
+  for (const el of news.list.querySelectorAll('.ago')) setText(el, timeAgo(Number(el.dataset.t)));
+}
+
+// Identifies a focusable element in the news view across a rebuild of its HTML.
+function newsFocusKey(el) {
+  const part = el.dataset.filter != null ? `f:${el.dataset.filter}`
+    : el.classList.contains('story-title') ? 't'
+    : el.hasAttribute('data-retry') ? 'r' : null;
+  return part && `${el.closest('.story')?.dataset.id ?? ''}|${part}`;
+}
+
 function renderNews() {
   if (!news.open) return;
+  // Rebuilding replaces the elements: remember what had keyboard focus and put it back afterwards.
+  const focused = news.view.contains(document.activeElement) ? newsFocusKey(document.activeElement) : null;
+  drawNews();
+  news.renderedDay = new Date().toDateString();
+  if (focused) {
+    for (const el of news.view.querySelectorAll('[data-filter], .story-title, [data-retry]')) {
+      if (newsFocusKey(el) === focused) { el.focus({ preventScroll: true }); break; }
+    }
+  }
+}
+
+function drawNews() {
   const d = news.data;
   const n = state.symbols.length;
   if (!d) return;
@@ -870,8 +898,8 @@ function renderNews() {
       ? `<a class="story-title" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer"${lang}>${escapeHtml(it.title)}</a>`
       : `<span class="story-title"${lang}>${escapeHtml(it.title)}</span>`;
     const chips = it.symbols.map((s) => `<button type="button" data-filter="${escapeHtml(s)}" title="Show only ${escapeHtml(ticker(s))} headlines">${escapeHtml(ticker(s))}</button>`).join('');
-    html += `<article class="story"><time datetime="${new Date(it.published * 1000).toISOString()}">${clock(it.published)}</time><div>${title}
-      <div class="story-meta">${it.source ? `<span>${escapeHtml(it.source)}</span>` : ''}<span>${timeAgo(it.published)}</span>${chips}</div></div></article>`;
+    html += `<article class="story" data-id="${escapeHtml(it.id)}"><time datetime="${new Date(it.published * 1000).toISOString()}">${clock(it.published)}</time><div>${title}
+      <div class="story-meta">${it.source ? `<span>${escapeHtml(it.source)}</span>` : ''}<span class="ago" data-t="${it.published}">${timeAgo(it.published)}</span>${chips}</div></div></article>`;
   }
   news.list.innerHTML = html;
 }
