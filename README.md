@@ -46,7 +46,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol.
 - **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late, so the price and day change on Taiwan tiles come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
-  The candles still come from TradingView, so during trading the newest candle can trail the price shown above it by up to 15 minutes.
+  On 1D, 1W, 1M and 3M charts the current candle follows the live price too, including the first 15 minutes of the day, before TradingView's delayed data has a candle for it.
+  1H and 4H candles still come from TradingView alone, so there the newest candle can trail the price by up to 15 minutes.
   If Yahoo stops answering, the tile goes back to TradingView's delayed price and shows the delay tag.
 
 Your symbol list, their order, the sort setting, the candle interval and the candle width are saved in your browser.

@@ -73,6 +73,20 @@ function setAttr(el, name, value) { if (el.getAttribute(name) !== value) el.setA
 const toCandle = (b) => ({ time: toLocal(b.time), open: b.open, high: b.high, low: b.low, close: b.close });
 const toVolume = (b) => ({ time: toLocal(b.time), value: b.volume, color: b.close >= b.open ? COLORS.volUp : COLORS.volDown });
 
+// Live prices (Taiwan listings, from Yahoo股市) are folded into the current candle on daily-and-up charts.
+// TradingView stamps those candles 09:00 Taipei on the first trading day of the period, so periods are
+// matched on the Taipei calendar: days, Monday-start weeks, months and quarters.
+const TPE = 8 * 3600;
+const LIVE_INTERVALS = new Set(['D', 'W', 'M', '3M']);
+function periodIndex(t, interval) {
+  const day = Math.floor((t + TPE) / 86400);
+  if (interval === 'D') return day;
+  if (interval === 'W') return Math.floor((day + 3) / 7); // 1 Jan 1970 was a Thursday
+  const d = new Date(day * 86400_000);
+  const months = d.getUTCFullYear() * 12 + d.getUTCMonth();
+  return interval === 'M' ? months : Math.floor(months / 3);
+}
+
 // ------------------------------------------------------------ Tile
 class Tile {
   constructor(symbol) {
@@ -87,6 +101,8 @@ class Tile {
     // Candle data lives here; the chart is only a view of it while the tile is on screen.
     this.candleData = [];
     this.volumeData = [];
+    this.live = null; // live quote with today's open/high/low, when the price comes from a live source
+    this.provisional = false; // true while the last candle is a stand-in built from the live quote
     this.chart = null;
     this.view = null; // { pos, spacing } saved when the chart is taken down, so it comes back where it was
     // Look up the tile's elements once.
@@ -178,6 +194,7 @@ class Tile {
     this.el.classList.remove('ready', 'loading', 'switching');
     this.el.classList.add('error');
     this.ui.state.textContent = message;
+    this.provisional = false;
     this.candleData = [];
     this.volumeData = [];
     this.candles?.setData([]);
@@ -192,6 +209,8 @@ class Tile {
   }
 
   setBars(bars, full) {
+    if (full) this.provisional = false; // replaced along with everything else
+    else this.dropProvisional();
     if (full) {
       // A fresh snapshot of the same interval (e.g. after a reconnect) keeps the user's pan position;
       // a new interval, first load or recovery from an error starts at the latest candle.
@@ -235,6 +254,53 @@ class Tile {
     const last = bars.at(-1);
     if (last && this.quote.lp == null) this.renderPrice(last.close);
     if (this.decimals == null && last) { this.decimals = decimalsFor(0, last.close); this.applyPriceFormat(); }
+    this.applyLive();
+  }
+
+  // Draws the live price into the current candle. TradingView's own (delayed) update of that candle
+  // replaces it on its next tick, and this runs again right after, so the two never fight.
+  applyLive() {
+    const L = this.live;
+    const interval = tfPreset().interval;
+    if (!L || !L.time || this.lastTime == null || !this.candleData.length || !LIVE_INTERVALS.has(interval)) return;
+    if (this.el.classList.contains('switching')) return; // data still belongs to the previous interval
+    const now = periodIndex(L.time, interval);
+    const lastPeriod = periodIndex(this.lastTime, interval);
+    if (now === lastPeriod && !this.provisional) {
+      const prev = this.candleData.at(-1);
+      const c = {
+        time: prev.time, open: prev.open, close: L.lp,
+        high: Math.max(prev.high, L.lp, L.high ?? -Infinity),
+        low: Math.min(prev.low, L.lp, L.low ?? Infinity),
+      };
+      const v = { time: prev.time, value: this.volumeData.at(-1).value, color: c.close >= c.open ? COLORS.volUp : COLORS.volDown };
+      this.setLastBar(c, v, false);
+    } else if (now > lastPeriod && L.open != null && L.high != null && L.low != null) {
+      // The market has opened in a new period but TradingView's delayed feed hasn't drawn its first
+      // candle yet (the first 15 minutes): stand in with today's numbers, volume unknown until then.
+      const time = Math.floor((L.time + TPE) / 86400) * 86400 - TPE + 9 * 3600; // 09:00 Taipei today, like TradingView
+      if ((L.time + TPE) % 86400 < 9 * 3600) return; // pre-open trial matching, not a trade
+      const c = { time: toLocal(time), open: L.open, high: Math.max(L.high, L.lp), low: Math.min(L.low, L.lp), close: L.lp };
+      const v = { time: c.time, value: 0, color: c.close >= c.open ? COLORS.volUp : COLORS.volDown };
+      this.setLastBar(c, v, !this.provisional);
+      this.provisional = true;
+    }
+  }
+
+  setLastBar(c, v, append) {
+    if (append) { this.candleData.push(c); this.volumeData.push(v); }
+    else { this.candleData[this.candleData.length - 1] = c; this.volumeData[this.volumeData.length - 1] = v; }
+    this.candles?.update(c);
+    this.volume?.update(v);
+  }
+
+  dropProvisional() {
+    if (!this.provisional) return;
+    this.provisional = false;
+    this.candleData.pop();
+    this.volumeData.pop();
+    this.candles?.pop(1);
+    this.volume?.pop(1);
   }
 
   // Apply the shared candle width and bring the latest candle back to the right edge.
@@ -267,6 +333,13 @@ class Tile {
     if (this.decimals == null && (quote.pricescale || quote.lp != null)) this.decimals = decimalsFor(quote.pricescale, quote.lp);
 
     if (quote.lp != null) this.renderPrice(quote.lp);
+
+    // Live source: keep the current candle in step with the price above it.
+    this.live = quote.price_source && quote.lp != null
+      ? { lp: quote.lp, time: quote.lp_time, open: q.day_open ?? null, high: q.day_high ?? null, low: q.day_low ?? null }
+      : null;
+    if (this.live) this.applyLive();
+    else this.dropProvisional(); // back on TradingView's delayed data
 
     const { change, session, delay } = this.ui;
     if (quote.ch != null && quote.chp != null) {
@@ -794,6 +867,7 @@ news.view.addEventListener('click', (e) => {
 });
 
 // ------------------------------------------------------------ Go
+if (new URLSearchParams(location.search).has('debug')) window.__watchlist = { tiles, state }; // for tests
 render();
 if (location.hash === '#news') openNews({ push: false });
 connect();

@@ -241,6 +241,8 @@ function pickQuote(q) {
     exchange: q.exchange, short_name: q.short_name, pricescale: q.pricescale,
     current_session: q.current_session, update_mode: q.update_mode, lp_time: q.lp_time,
     price_source: q.price_source ?? null, // set when the price comes from somewhere other than TradingView
+    // With a live price source: today's open, high and low, for drawing the current candle.
+    day_open: q.day_open ?? null, day_high: q.day_high ?? null, day_low: q.day_low ?? null,
   };
 }
 
