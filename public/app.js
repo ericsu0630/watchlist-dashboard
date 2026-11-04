@@ -1150,7 +1150,8 @@ for (const id of SUGGESTIONS) {
 const NEWS_REFRESH_MS = 5 * 60_000;
 const news = {
   open: false, data: null, filter: null, seq: 0, loading: false, timer: null, tick: null,
-  view: $('#news'), list: $('#news-list'), sub: $('#news-sub'), note: $('#news-note'), filterEl: $('#news-filter'),
+  view: $('#news'), list: $('#news-list'), sub: $('#news-sub'), note: $('#news-note'), filterEl: $('#news-filter'), tabsEl: $('#news-tabs'),
+  tabFilter: null, // tab id chosen with the tab buttons, or null for all tabs
   btn: $('#news-btn'), back: $('#news-back'), refresh: $('#news-refresh'),
 };
 
@@ -1264,7 +1265,8 @@ function tickNews() {
 
 // Identifies a focusable element in the news view across a rebuild of its HTML.
 function newsFocusKey(el) {
-  const part = el.dataset.filter != null ? `f:${el.dataset.filter}`
+  const part = el.dataset.tabfilter != null ? `t:${el.dataset.tabfilter}`
+    : el.dataset.filter != null ? `f:${el.dataset.filter}`
     : el.classList.contains('story-title') ? 't'
     : el.hasAttribute('data-retry') ? 'r' : null;
   return part && `${el.closest('.story')?.dataset.id ?? ''}|${part}`;
@@ -1277,7 +1279,7 @@ function renderNews() {
   drawNews();
   news.renderedDay = new Date().toDateString();
   if (focused) {
-    for (const el of news.view.querySelectorAll('[data-filter], .story-title, [data-retry]')) {
+    for (const el of news.view.querySelectorAll('[data-tabfilter], [data-filter], .story-title, [data-retry]')) {
       if (newsFocusKey(el) === focused) { el.focus({ preventScroll: true }); break; }
     }
   }
@@ -1291,14 +1293,21 @@ function drawNews() {
   if (d.error) {
     news.sub.textContent = '';
     news.filterEl.replaceChildren();
+    news.tabsEl.hidden = true;
     news.note.hidden = true;
     news.list.innerHTML = `<div class="news-state"><p>${escapeHtml(d.error)} Check your internet connection.</p><button type="button" data-retry>Try again</button></div>`;
     return;
   }
   const items = d.items || [];
-  // A filter for a symbol that's no longer on the board is dropped.
+  // Filters for a tab or symbol that's no longer on the board are dropped.
+  if (news.tabFilter && !tabById(news.tabFilter)) news.tabFilter = null;
   if (news.filter && !symbols.includes(news.filter)) news.filter = null;
-  const shown = news.filter ? items.filter((it) => it.symbols.includes(news.filter)) : items;
+  // A tab shows the stories that mention any of its symbols; a symbol, the stories that mention it.
+  const tabSet = (t) => new Set(t.symbols);
+  const inSet = (set) => (it) => it.symbols.some((s) => set.has(s));
+  const tabFilter = news.tabFilter ? tabById(news.tabFilter) : null;
+  const shown = news.filter ? items.filter((it) => it.symbols.includes(news.filter))
+    : tabFilter ? items.filter(inSet(tabSet(tabFilter))) : items;
 
   const win = `${d.windowHours || 24} hours`;
   const updated = d.refreshing ? ' Checking for newer headlines…' : d.fetchedAt ? ` Updated ${clock(d.fetchedAt)}.` : '';
@@ -1309,12 +1318,19 @@ function drawNews() {
     ? `${plural(recentN, 'headline')} from the last ${win} for your ${plural(n, 'symbol')}${olderN ? `, plus ${olderN} earlier for quiet ones` : ''}.${updated}`
     : '';
 
-  // Filter chips: All, then each symbol with its headline count, in board order.
+  // Tab buttons (All, then each tab with its headline count), shown when there's more than one tab.
+  const tabBtn = (id, label, count) =>
+    `<button type="button" data-tabfilter="${escapeHtml(id)}" aria-pressed="${(news.tabFilter || '') === id}">${escapeHtml(label)} <span>${count}</span></button>`;
+  news.tabsEl.hidden = state.tabs.length < 2 || !n;
+  news.tabsEl.innerHTML = news.tabsEl.hidden ? ''
+    : tabBtn('', 'All', items.length) + state.tabs.map((t) => tabBtn(t.id, t.name, items.filter(inSet(tabSet(t))).length)).join('');
+  // Symbol chips: the chosen tab's symbols (or every symbol), with their headline counts, in board order.
+  // Clicking one shows only its headlines; clicking it again goes back.
   const counts = new Map(symbols.map((s) => [s, 0]));
   for (const it of items) for (const s of it.symbols) counts.set(s, (counts.get(s) || 0) + 1);
-  const chip = (sym, label, count) =>
-    `<button type="button" data-filter="${escapeHtml(sym)}" aria-pressed="${(news.filter || '') === sym}">${escapeHtml(label)} <span>${count}</span></button>`;
-  news.filterEl.innerHTML = n ? chip('', 'All', items.length) + symbols.map((s) => chip(s, ticker(s), counts.get(s) || 0)).join('') : '';
+  const chip = (sym) =>
+    `<button type="button" data-filter="${escapeHtml(sym)}" aria-pressed="${news.filter === sym}">${escapeHtml(ticker(sym))} <span>${counts.get(sym) || 0}</span></button>`;
+  news.filterEl.innerHTML = n ? (tabFilter ? tabFilter.symbols : symbols).map(chip).join('') : '';
 
   const failed = (d.failed || []).filter((s) => symbols.includes(s));
   news.note.hidden = !failed.length;
@@ -1326,7 +1342,8 @@ function drawNews() {
   }
   if (!shown.length) {
     const msg = failed.length === n ? 'Headlines couldn\'t be loaded for any of your symbols.'
-      : news.filter ? `No headlines for ${escapeHtml(ticker(news.filter))} in the last ${win}.` : `No headlines for your symbols in the last ${win}.`;
+      : news.filter ? `No headlines for ${escapeHtml(ticker(news.filter))} in the last ${win}.`
+      : tabFilter ? `No headlines for the symbols in ${escapeHtml(tabFilter.name)} in the last ${win}.` : `No headlines for your symbols in the last ${win}.`;
     news.list.innerHTML = `<div class="news-state"><p>${msg}</p>${failed.length === n ? '<button type="button" data-retry>Try again</button>' : ''}</div>`;
     return;
   }
@@ -1335,7 +1352,7 @@ function drawNews() {
     if (it.older && !inOlder) {
       // Quiet symbols: their latest stories from before the window, in their own section.
       inOlder = true; lastDay = '';
-      const quiet = (d.olderFor || []).filter((s) => !news.filter || s === news.filter).map(ticker);
+      const quiet = (d.olderFor || []).filter((s) => (news.filter ? s === news.filter : !tabFilter || tabFilter.symbols.includes(s))).map(ticker);
       html += `<section class="news-older"><h2>Earlier headlines</h2><p>No news in the last ${win} for ${escapeHtml(quiet.join(', ') || 'this symbol')}, so here are the latest stories from the past two weeks.</p></section>`;
     }
     const day = dayLabel(it.published);
@@ -1352,10 +1369,19 @@ function drawNews() {
 }
 // Filter chips (top row and on each story) and retry buttons.
 news.view.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-tabfilter]');
+  if (t) {
+    news.tabFilter = t.dataset.tabfilter || null;
+    news.filter = null;
+    renderNews();
+    return;
+  }
   const f = e.target.closest('[data-filter]');
   if (f) {
-    const sym = f.dataset.filter || null;
-    news.filter = news.filter === sym && f.closest('.story') ? null : sym;
+    const sym = f.dataset.filter;
+    news.filter = news.filter === sym ? null : sym;
+    // A symbol from outside the chosen tab (a story can mention several) widens the tab choice to All.
+    if (news.filter && news.tabFilter && !tabById(news.tabFilter)?.symbols.includes(sym)) news.tabFilter = null;
     renderNews();
     return;
   }

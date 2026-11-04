@@ -346,6 +346,16 @@ main { padding: 10px 10px 32px; }
 .news-titles h1 { margin: 0; font: 600 28px/1.05 var(--num); }
 .news-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
 .news-filter { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 14px; border-bottom: 1px solid var(--line); }
+/* Tab buttons above the symbol chips: a segmented control, like the interval switch. */
+.news-tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; margin: 0 0 12px; background: var(--tile); border: 1px solid var(--line); border-radius: 9px; max-width: 100%; }
+.news-tabs button {
+  display: inline-flex; align-items: baseline; gap: 7px; height: 30px; padding: 0 12px; border: 0; border-radius: 6px; cursor: pointer;
+  background: none; color: var(--muted); font: 600 15px/30px var(--num); letter-spacing: .02em;
+}
+.news-tabs button span { font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.news-tabs button:hover { color: var(--ink); }
+.news-tabs button[aria-pressed="true"] { background: var(--active); color: var(--ink); box-shadow: inset 0 0 0 1px var(--active-border); }
+.news-tabs button[aria-pressed="true"] span { color: var(--ink-2); }
 .news-filter button {
   display: inline-flex; align-items: baseline; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; cursor: pointer;
   background: var(--tile); border: 1px solid var(--line-strong); color: var(--ink-2);

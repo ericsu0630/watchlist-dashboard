@@ -35,7 +35,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   If you already know the full TradingView id, type it (for example `TWSE:0050`) and press Enter.
   A symbol lives in one tab only. New symbols go into the open tab; if the symbol is already in a tab, that tab opens and its tile is pointed out instead (search results say which tab has it).
 - **News**: the News button left of the search bar swaps the charts for the latest headlines (last 24 hours) for every symbol on your board, across all tabs, newest first.
-  Click a symbol chip to show only its headlines, and click a headline to open the full story in a new tab. The list refreshes every 5 minutes while open.
+  With more than one tab, the buttons above the symbol chips (All, then each tab with its headline count) show only the headlines for that tab's symbols and narrow the chips to them.
+  Click a symbol chip to show only its headlines (click it again to go back), and click a headline to open the full story in a new tab. The list refreshes every 5 minutes while open.
   It opens instantly: the server keeps recent headlines ready (it starts fetching them a few seconds after the page loads) and shows them at once while it checks for newer ones.
   Go back with the Charts button, Esc or your browser's back button. Headlines come from TradingView's public news feed. Taiwan-listed symbols (TWSE and TPEX) also get Traditional Chinese headlines from Yahoo股市; a story carried by both sources shows once.
   If a symbol has nothing in the last 24 hours, its latest three stories from the past two weeks appear in an "Earlier headlines" section at the end, so quiet days don't leave it blank.
