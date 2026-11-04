@@ -53,6 +53,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   Each tab keeps its own setting. New symbols, and symbols moved in from another tab, go into their sorted place. Moving a tile yourself switches the button to Unsorted, and new symbols then go at the end.
 - **Reorder**: drag a tile by its header. Or focus the ⋮⋮ handle (with Tab) and press ← / →.
 - **Remove**: hover a tile and click ×, or right-click it and pick Remove.
+- **Keyboard shortcuts** on the main screen: **← →** switch tabs (wrapping around), and **↑ ↓** scroll the open tab one row of tiles at a time, each row lining up just under the top bar.
+  Arrow keys keep their usual job in the search box, the candle-width slider, the interval switch, a tile's ⋮⋮ handle (reorder) and menus. `/` jumps to the search box.
 - **Inside a chart**: drag to pan and pinch to zoom that one chart. Double-click to reset it to the slider's width.
   The mouse wheel scrolls the page, not the chart.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
