@@ -644,11 +644,14 @@ function switchTab(id, { scroll = true } = {}) {
   if (id === state.activeTab || !tabById(id)) return;
   state.activeTab = id;
   setSort(state.sort); // the sort button shows this tab's setting
+  // A day-change tab opens already in order, from the latest prices its tiles have. A tab whose prices
+  // aren't known yet (not opened since the page loaded) keeps its saved order until they arrive.
+  if (LIVE_SORTS.has(state.sort) && state.symbols.every((s) => dayChange(s) != null)) applySort();
   save();
   render();
   sendWatch();
   if (scroll && !news.open) scrollTo(0, 0);
-  if (LIVE_SORTS.has(state.sort)) resortSoon(); // once this tab's prices have caught up
+  if (LIVE_SORTS.has(state.sort)) resortSoon(); // and again once this tab's prices have caught up
 }
 
 function uniqueTabName(base) {

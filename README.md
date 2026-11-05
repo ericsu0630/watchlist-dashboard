@@ -49,6 +49,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   - **Ticker A–Z / Z–A** (numbers sort naturally, so 0050 comes before 2330).
   - **Day change: gainers first / losers first**, by the day change % shown on each tile. Symbols without a price yet go last.
     This order follows prices as they move, gently: a couple of seconds after prices arrive, then at most once a minute, with tiles sliding to their new places.
+    Switching to a tab sorted this way puts it in order straight away, from the latest prices its tiles have (a tab not opened since the page loaded waits for its prices first).
     It waits while your pointer is over the grid, a menu is open or you're dragging a tile, so nothing moves out from under a click.
   Each tab keeps its own setting. New symbols, and symbols moved in from another tab, go into their sorted place. Moving a tile yourself switches the button to Unsorted, and new symbols then go at the end.
 - **Reorder**: drag a tile by its header. Or focus the ⋮⋮ handle (with Tab) and press ← / →.
