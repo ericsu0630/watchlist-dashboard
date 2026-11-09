@@ -115,9 +115,15 @@ const toVolume = (b) => ({ time: toLocal(b.time), value: b.volume, color: b.clos
 // TradingView stamps those candles 09:00 Taipei on the first trading day of the period, so periods are
 // matched on the Taipei calendar: days, Monday-start weeks, months and quarters.
 const TPE = 8 * 3600;
-const LIVE_INTERVALS = new Set(['D', 'W', 'M', '3M']);
+// On 1H and 4H the server already sends live candles for the session (built from Yahoo's minutes,
+// polled every 20 s); the live price keeps the newest one current in between. TradingView's intraday
+// candles start at 09:00 Taipei: 1H on the hour, 4H at 09:00 and 13:00.
+const LIVE_INTERVALS = new Set(['60', '240', 'D', 'W', 'M', '3M']);
+const INTRADAY = new Set(['60', '240']);
 function periodIndex(t, interval) {
   const day = Math.floor((t + TPE) / 86400);
+  if (interval === '60') return Math.floor((t + TPE - 9 * 3600) / 3600);
+  if (interval === '240') return day * 2 + ((t + TPE) % 86400 >= 13 * 3600 ? 1 : 0);
   if (interval === 'D') return day;
   if (interval === 'W') return Math.floor((day + 3) / 7); // 1 Jan 1970 was a Thursday
   const d = new Date(day * 86400_000);
@@ -304,16 +310,18 @@ class Tile {
     if (this.el.classList.contains('switching')) return; // data still belongs to the previous interval
     const now = periodIndex(L.time, interval);
     const lastPeriod = periodIndex(this.lastTime, interval);
+    const intraday = INTRADAY.has(interval);
     if (now === lastPeriod && !this.provisional) {
       const prev = this.candleData.at(-1);
+      // The day's high and low only apply to daily-and-up candles; an hour's candle just takes the price.
       const c = {
         time: prev.time, open: prev.open, close: L.lp,
-        high: Math.max(prev.high, L.lp, L.high ?? -Infinity),
-        low: Math.min(prev.low, L.lp, L.low ?? Infinity),
+        high: Math.max(prev.high, L.lp, intraday ? -Infinity : L.high ?? -Infinity),
+        low: Math.min(prev.low, L.lp, intraday ? Infinity : L.low ?? Infinity),
       };
       const v = { time: prev.time, value: this.volumeData.at(-1).value, color: c.close >= c.open ? COLORS.volUp : COLORS.volDown };
       this.setLastBar(c, v, false);
-    } else if (now > lastPeriod && L.open != null && L.high != null && L.low != null) {
+    } else if (!intraday && now > lastPeriod && L.open != null && L.high != null && L.low != null) {
       // The market has opened in a new period but TradingView's delayed feed hasn't drawn its first
       // candle yet (the first 15 minutes): stand in with today's numbers, volume unknown until then.
       const time = Math.floor((L.time + TPE) / 86400) * 86400 - TPE + 9 * 3600; // 09:00 Taipei today, like TradingView

@@ -185,8 +185,9 @@ function candleStream(symbol, tf) {
     const handle = await source.watchCandles(symbol, preset.interval, preset.count, {
       onData(candles) {
         const lastTime = candles.at(-1)?.time;
-        // Same series and only the latest one or two bars moved: send just the tail.
-        const tail = prevLastTime != null && (lastTime === prevLastTime || candles.at(-2)?.time === prevLastTime);
+        // Same series and only the latest one or two bars moved: send just the tail. A source that
+        // swapped in candles from elsewhere (forceFull) needs everything sent again.
+        const tail = !candles.forceFull && prevLastTime != null && (lastTime === prevLastTime || candles.at(-2)?.time === prevLastTime);
         prevLastTime = lastTime;
         // New tabs get the full snapshot, built only when one actually joins.
         let fullRaw = null;

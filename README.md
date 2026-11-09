@@ -61,8 +61,9 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol.
 - **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late, so the price and day change on Taiwan tiles come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
-  On 1D, 1W, 1M and 3M charts the current candle follows the live price too, including the first 15 minutes of the day, before TradingView's delayed data has a candle for it.
-  1H and 4H candles still come from TradingView alone, so there the newest candle can trail the price by up to 15 minutes.
+  The charts are live too. On 1H and 4H charts, today's candles are built from Yahoo股市's minute-by-minute data (refreshed every 20 s, with the live price keeping the newest candle current in between); earlier days come from TradingView.
+  On 1D, 1W, 1M and 3M charts the current candle follows the live price, including the first 15 minutes of the day, before TradingView's delayed data has a candle for it.
+  If Yahoo stops answering, the charts go back to TradingView's delayed candles.
   If Yahoo stops answering, the tile goes back to TradingView's delayed price and shows the delay tag.
 
 Your tabs (names, symbols, order and sort settings), the open tab, the candle interval and the candle width are saved in your browser.
@@ -96,6 +97,7 @@ lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one sh
 lib/news.js          Headlines per symbol: 24-hour window (older fallback for quiet symbols), duplicates merged, 5-minute cache (older results shown at once while newer ones load)
 lib/yahoo-tw-news.js Yahoo股市 (zh-TW) headlines for Taiwan listings (TWSE:2330 -> 2330.TW, TPEX:6488 -> 6488.TWO), read from each stock's news page
 lib/yahoo-tw-quotes.js Live Yahoo股市 prices for Taiwan listings: one shared poll every 5 s for all of them (every 60 s after the close)
+lib/yahoo-tw-intraday.js Today's 1H/4H candles for Taiwan listings from Yahoo股市 minute data: one shared poll every 20 s (5 min after the close)
 lib/demo-source.js   Simulated data and sample headlines for `npm run demo`
 public/index.html    Page layout
 public/styles.css    Dark theme
