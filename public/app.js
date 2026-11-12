@@ -1063,15 +1063,12 @@ zoomInput.addEventListener('dblclick', () => {
 // ------------------------------------------------------------ Live connection
 let ws = null;
 let wsRetry = 0;
-const conn = $('#conn');
-function setConn(cls, text) { conn.className = `conn ${cls}`; $('span', conn).textContent = text; }
 
 function connect() {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-  ws.addEventListener('open', () => { wsRetry = 0; setConn('', 'Connecting'); sendWatch(); });
+  ws.addEventListener('open', () => { wsRetry = 0; sendWatch(); });
   ws.addEventListener('message', (e) => handle(JSON.parse(e.data)));
   ws.addEventListener('close', () => {
-    setConn('down', 'Reconnecting');
     setTimeout(connect, Math.min(15000, 600 * 2 ** wsRetry++));
   });
 }
@@ -1085,7 +1082,6 @@ function handle(msg) {
       $('#demo-note').hidden = !msg.demo;
       break;
     case 'bars':
-      if (!conn.classList.contains('live')) setConn('live', 'Live');
       if (tile && msg.tf === state.tf) tile.setBars(msg.bars, msg.full);
       break;
     case 'info':
@@ -1098,7 +1094,6 @@ function handle(msg) {
       if (tile && (!msg.tf || msg.tf === state.tf)) tile.setError(msg.message);
       break;
     case 'retrying':
-      setConn('down', 'TradingView unreachable');
       if (tile && msg.tf === state.tf && !tile.el.classList.contains('ready')) tile.ui.state.textContent = msg.message;
       break;
   }
