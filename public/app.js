@@ -403,9 +403,15 @@ class Tile {
       setAttr(session, 'title', SESSION_LABELS[s] || s);
     }
 
+    // Data that isn't live gets a tag: "15 min delay", or "End of day" for feeds TradingView only
+    // updates after the close (some indices without a login), which otherwise look live but sit on
+    // the previous day's numbers all session.
     const m = /^delayed[^\d]*(\d+)/.exec(quote.update_mode || '');
-    delay.hidden = !m;
+    const eod = quote.update_mode === 'endofday';
+    delay.hidden = !m && !eod;
     if (m) setText(delay, `${Math.round(Number(m[1]) / 60)} min delay`);
+    else if (eod) setText(delay, 'End of day');
+    setAttr(delay, 'title', eod ? 'TradingView only updates this symbol after the market closes' : m ? 'TradingView is sending delayed data for this symbol' : '');
   }
 
   renderPrice(price) {

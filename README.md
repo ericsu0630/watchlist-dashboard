@@ -59,8 +59,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Inside a chart**: drag to pan and pinch to zoom that one chart. Double-click to reset it to the slider's width.
   The mouse wheel scrolls the page, not the chart.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
-  A "15 min delay" tag means TradingView is sending delayed data for that symbol.
-- **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late, so the price and day change on Taiwan tiles come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
+  A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).
+- **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late (and TAIEX as `INDEX:TAIEX` only updates at the end of the day), so the price and day change on Taiwan tiles, TAIEX included, come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
   The charts are live too. On 1H and 4H charts, today's candles are built from Yahoo股市's minute-by-minute data (refreshed every 20 s, with the live price keeping the newest candle current in between); earlier days come from TradingView.
   On 1D, 1W, 1M and 3M charts the current candle follows the live price, including the first 15 minutes of the day, before TradingView's delayed data has a candle for it.
   If Yahoo stops answering, the charts go back to TradingView's delayed candles.
