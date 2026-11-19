@@ -80,6 +80,19 @@ To use your own TradingView account's data permissions:
 
 Keep `.env` private. Anyone with those cookies can use your TradingView session.
 
+## When the connection drops
+
+If your network blips, Wi-Fi changes or your Mac sleeps, the board carries on by itself: the server notices within 30 seconds (straight away after sleep), reconnects to TradingView in the background, and the charts pick up where they left off.
+The server window shows one line when the connection is lost and one when it's back, for example:
+
+```
+[tradingview] connection lost (No data from the server for 30 s); reconnecting in the background
+[tradingview] reconnected after 12 s
+```
+
+During a longer outage it tries again with growing pauses (up to once a minute) and adds a "still offline" reminder at most every 5 minutes.
+Yahoo股市 and headline problems are also reported once, not per symbol, and a single failed Yahoo request isn't reported at all.
+
 ## Settings
 
 | Variable | Default | Purpose |
@@ -92,8 +105,12 @@ Keep `.env` private. Anyone with those cookies can use your TradingView session.
 
 ```
 server.js            Express + WebSocket server. Shares one upstream stream per symbol/interval across tabs, keeps it
-                     warm for 60 s after the last tab leaves, and reconnects on its own. Serves fonts and the chart library
+                     warm for 60 s after the last tab leaves, and after a connection loss resumes streams a few at a time.
+                     Serves fonts and the chart library
 lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one shared quote session, all on one connection
+lib/tv-connection.js That one connection: notices when it's lost (30 s of silence, or waking from sleep), reconnects with
+                     backoff, and logs one line each way
+lib/log.js           One log line per repeating problem per interval
 lib/news.js          Headlines per symbol: 24-hour window (older fallback for quiet symbols), duplicates merged, 5-minute cache (older results shown at once while newer ones load)
 lib/yahoo-tw-news.js Yahoo股市 (zh-TW) headlines for Taiwan listings (TWSE:2330 -> 2330.TW, TPEX:6488 -> 6488.TWO), read from each stock's news page
 lib/yahoo-tw-quotes.js Live Yahoo股市 prices for Taiwan listings: one shared poll every 5 s for all of them (every 60 s after the close)

@@ -24,7 +24,10 @@ const DEMO = process.argv.includes('--demo') || process.env.DEMO === '1';
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '127.0.0.1';
 
-const source = DEMO
+// PD_TEST_SOURCE: a module whose createSource() stands in for TradingView (used by the tests only).
+const source = process.env.PD_TEST_SOURCE
+  ? (await import(path.resolve(process.env.PD_TEST_SOURCE))).createSource()
+  : DEMO
   ? createDemoSource()
   : createTradingViewSource({
       credentials: process.env.TV_SESSION && process.env.TV_SIGNATURE
@@ -88,6 +91,28 @@ const LINGER_MS = 60_000;
 
 const FATAL = new Set(['SYMBOL_ERROR', 'SERIES_ERROR', 'INVALID_ARGUMENT', 'CRITICAL_ERROR', 'NO_DATA', 'QUOTE_ERROR']);
 
+// The shared upstream connection (TradingView's; the demo has none). When it drops, it logs once
+// and reconnects by itself; streams then wait for it instead of each retrying and logging on its own.
+const connection = source.connection;
+
+// Streams waiting for the connection resume a few at a time once it's back, not all at once.
+const RESUME_AT_ONCE = 6;
+const resumeQueue = [];
+let resuming = 0;
+function resumeLater(stream) {
+  resumeQueue.push(stream);
+  pumpResumes();
+}
+function pumpResumes() {
+  while (resuming < RESUME_AT_ONCE && resumeQueue.length) {
+    const s = resumeQueue.shift();
+    if (!s.waiting || streams.get(s.key) !== s) continue; // stopped or restarted meanwhile
+    s.waiting = false;
+    resuming++;
+    s.start().finally(() => { resuming--; pumpResumes(); });
+  }
+}
+
 class Stream {
   constructor(key, startFn) {
     this.key = key;
@@ -96,6 +121,7 @@ class Stream {
     this.handle = null;
     this.retry = 0;
     this.timer = null;
+    this.waiting = false; // waiting for the shared connection to come back
     this.error = null;
     // Last messages, replayed to newly joined sockets. Values are JSON strings,
     // or functions that build one (so large snapshots are only serialized when needed).
@@ -107,7 +133,7 @@ class Stream {
     this.sockets.add(ws);
     for (const entry of Object.values(this.cache)) sendRaw(ws, typeof entry === 'function' ? entry() : entry);
     if (this.error) send(ws, this.error);
-    if (!this.handle && !this.timer) this.start();
+    if (!this.handle && !this.timer && !this.waiting) this.start();
   }
   remove(ws) {
     this.sockets.delete(ws);
@@ -146,6 +172,8 @@ class Stream {
   // Returns true when the error is permanent for this symbol (no retry).
   fail(err) {
     const code = err?.code || 'ERROR';
+    // A lost connection is reported once by the connection itself, not by every stream.
+    if (connection?.isConnectionError(err)) return false;
     console.error(`[${this.key}]`, code, err?.message);
     if (FATAL.has(code)) {
       this.error = this.errorMessage(code, err);
@@ -156,6 +184,14 @@ class Stream {
   }
   scheduleRetry() {
     clearTimeout(this.timer);
+    this.timer = null;
+    if (connection && connection.state === 'down') {
+      // Nothing to gain from retrying while the connection is down: wait for it, then queue up.
+      if (this.waiting) return;
+      this.waiting = true;
+      connection.whenUp().then(() => resumeLater(this));
+      return;
+    }
     const delay = Math.min(30_000, 1000 * 2 ** this.retry++) + Math.random() * 500;
     this.timer = setTimeout(() => this.start(), delay);
   }
@@ -165,6 +201,7 @@ class Stream {
     this.lingerTimer = null;
     clearTimeout(this.timer);
     this.timer = null;
+    this.waiting = false;
     const h = this.handle;
     this.handle = null;
     this.cache = {};
