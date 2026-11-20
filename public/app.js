@@ -28,8 +28,8 @@ const state = {
 };
 if (!TIMEFRAMES.some((t) => t.id === state.tf)) state.tf = DEFAULT_TIMEFRAME;
 
-// Candle width (Lightweight Charts "bar spacing": px from one candle's centre to the next), shared by every chart.
-// The slider steps in whole pixels; ZOOM_MIN/ZOOM_MAX must match the input's min/max in index.html.
+// Candle width (Lightweight Charts "bar spacing": px from one candle's centre to the next), shared by tile charts.
+// Enlarged charts start near this width but keep their own view. The slider limits match index.html.
 const ZOOM_MIN = 1, ZOOM_MAX = 15, ZOOM_DEFAULT = 5;
 const clampZoom = (px) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(Number(px) || ZOOM_DEFAULT)));
 state.zoom = clampZoom(store.get('pd.zoomPx', ZOOM_DEFAULT));
@@ -131,6 +131,144 @@ function periodIndex(t, interval) {
   return interval === 'M' ? months : Math.floor(months / 3);
 }
 
+function createChartView(host, interactive) {
+  const chart = LWC.createChart(host, {
+    autoSize: true,
+    layout: {
+      background: { type: 'solid', color: 'transparent' },
+      textColor: COLORS.text,
+      fontFamily: CHART_FONT,
+      fontSize: 12,
+      attributionLogo: false,
+    },
+    grid: { vertLines: { visible: false }, horzLines: { color: COLORS.grid } },
+    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.24 } },
+    timeScale: { borderVisible: false, rightOffset: 2, barSpacing: state.zoom, minBarSpacing: 0.5, timeVisible: isIntraday(), secondsVisible: false, fixLeftEdge: false },
+    crosshair: {
+      mode: LWC.CrosshairMode.Normal,
+      vertLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
+      horzLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
+    },
+    handleScroll: interactive,
+    handleScale: interactive,
+  });
+  const candles = chart.addSeries(LWC.CandlestickSeries, {
+    upColor: COLORS.up, downColor: COLORS.down, borderVisible: false,
+    wickUpColor: COLORS.up, wickDownColor: COLORS.down,
+    priceLineColor: COLORS.lastPrice, priceLineStyle: LWC.LineStyle.Dotted,
+  });
+  const volume = chart.addSeries(LWC.HistogramSeries, {
+    priceFormat: { type: 'volume' }, priceScaleId: 'vol', lastValueVisible: false, priceLineVisible: false,
+  });
+  chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
+  return { chart, candles, volume };
+}
+
+function applyChartPriceFormat(series, tile) {
+  if (!series || tile.decimals == null) {
+    return;
+  }
+  const ps = tile.info?.pricescale || 10 ** tile.decimals;
+  series.applyOptions({ priceFormat: { type: 'price', precision: tile.decimals, minMove: (tile.info?.minmov || 1) / ps } });
+}
+
+const chartViewer = {
+  dialog: $('#chart-viewer'), host: $('#chart-viewer-chart'), title: $('#chart-viewer-title'), meta: $('#chart-viewer-meta'), close: $('#chart-viewer-close'),
+  tile: null, chart: null, candles: null, volume: null, returnFocus: null,
+};
+
+function updateChartViewerHeader(tile) {
+  if (chartViewer.tile !== tile) {
+    return;
+  }
+  const [exchange, symbol] = splitSymbol(tile.symbol);
+  const description = tile.info?.description || tile.quote.description || tile.ui.name.textContent;
+  setText(chartViewer.title, symbol);
+  setText(chartViewer.meta, [exchange, description, tfPreset().label].filter(Boolean).join(' · '));
+  setAttr(chartViewer.close, 'aria-label', `Close ${symbol} enlarged chart`);
+}
+
+function resetChartViewerRange() {
+  const ts = chartViewer.chart.timeScale();
+  ts.applyOptions({ barSpacing: Math.max(state.zoom, 6) });
+  ts.scrollToPosition(2, false);
+}
+
+function openChartViewer(tile) {
+  if (!tile.candleData.length || chartViewer.dialog.open) {
+    return;
+  }
+  chartViewer.tile = tile;
+  chartViewer.returnFocus = tile.ui.chart;
+  updateChartViewerHeader(tile);
+  chartViewer.dialog.showModal();
+  Object.assign(chartViewer, createChartView(chartViewer.host, true));
+  chartViewer.candles.setData(tile.candleData);
+  chartViewer.volume.setData(tile.volumeData);
+  applyChartPriceFormat(chartViewer.candles, tile);
+  resetChartViewerRange();
+  chartViewer.close.focus();
+}
+
+function closeChartViewer(tile = null, restoreFocus = true) {
+  if (tile && chartViewer.tile !== tile) {
+    return;
+  }
+  if (!restoreFocus) {
+    chartViewer.returnFocus = null;
+  }
+  if (chartViewer.dialog.open) {
+    chartViewer.dialog.close();
+  }
+}
+
+function syncChartViewer(tile, reset) {
+  if (chartViewer.tile !== tile || !chartViewer.chart) {
+    return;
+  }
+  const ts = chartViewer.chart.timeScale();
+  const pos = reset ? null : ts.scrollPosition();
+  chartViewer.chart.applyOptions({ timeScale: { timeVisible: isIntraday() } });
+  chartViewer.candles.setData(tile.candleData);
+  chartViewer.volume.setData(tile.volumeData);
+  if (reset && tile.candleData.length) {
+    resetChartViewerRange();
+  } else if (pos != null) {
+    ts.scrollToPosition(pos, false);
+  }
+}
+
+function updateChartViewerBar(tile, candle, volume) {
+  if (chartViewer.tile !== tile || !chartViewer.chart) {
+    return;
+  }
+  chartViewer.candles.update(candle);
+  chartViewer.volume.update(volume);
+}
+
+function popChartViewerBar(tile) {
+  if (chartViewer.tile !== tile || !chartViewer.chart) {
+    return;
+  }
+  chartViewer.candles.pop(1);
+  chartViewer.volume.pop(1);
+}
+
+chartViewer.close.addEventListener('click', () => closeChartViewer());
+chartViewer.dialog.addEventListener('pointerdown', (e) => {
+  if (e.target === chartViewer.dialog) {
+    closeChartViewer();
+  }
+});
+chartViewer.dialog.addEventListener('close', () => {
+  const returnFocus = chartViewer.returnFocus;
+  chartViewer.chart?.remove();
+  chartViewer.tile = chartViewer.chart = chartViewer.candles = chartViewer.volume = chartViewer.returnFocus = null;
+  if (returnFocus?.isConnected) {
+    returnFocus.focus();
+  }
+});
+
 // ------------------------------------------------------------ Tile
 class Tile {
   constructor(symbol) {
@@ -164,6 +302,15 @@ class Tile {
     this.el.setAttribute('aria-label', `${ticker} on ${exch}`);
 
     this.ui.remove.addEventListener('click', () => removeSymbol(symbol));
+    this.ui.chart.setAttribute('aria-label', `Open an enlarged chart for ${ticker}`);
+    this.ui.chart.addEventListener('click', () => openChartViewer(this));
+    this.ui.chart.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') {
+        return;
+      }
+      e.preventDefault();
+      openChartViewer(this);
+    });
     this.ui.grip.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); moveSymbol(symbol, -1); }
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); moveSymbol(symbol, 1); }
@@ -176,36 +323,13 @@ class Tile {
 
   // Build the chart (called when the tile comes near the viewport).
   mount() {
-    if (this.chart) return;
-    this.chart = LWC.createChart(this.ui.chart, {
-      autoSize: true,
-      layout: {
-        background: { type: 'solid', color: 'transparent' },
-        textColor: COLORS.text,
-        fontFamily: CHART_FONT,
-        fontSize: 12,
-        attributionLogo: false,
-      },
-      grid: { vertLines: { visible: false }, horzLines: { color: COLORS.grid } },
-      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.24 } },
-      timeScale: { borderVisible: false, rightOffset: 2, barSpacing: state.zoom, minBarSpacing: 0.5, timeVisible: isIntraday(), secondsVisible: false, fixLeftEdge: false },
-      crosshair: {
-        mode: LWC.CrosshairMode.Normal,
-        vertLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
-        horzLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
-      },
-      handleScroll: false,
-      handleScale: false,
-    });
-    this.candles = this.chart.addSeries(LWC.CandlestickSeries, {
-      upColor: COLORS.up, downColor: COLORS.down, borderVisible: false,
-      wickUpColor: COLORS.up, wickDownColor: COLORS.down,
-      priceLineColor: COLORS.lastPrice, priceLineStyle: LWC.LineStyle.Dotted,
-    });
-    this.volume = this.chart.addSeries(LWC.HistogramSeries, {
-      priceFormat: { type: 'volume' }, priceScaleId: 'vol', lastValueVisible: false, priceLineVisible: false,
-    });
-    this.chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
+    if (this.chart) {
+      return;
+    }
+    const view = createChartView(this.ui.chart, false);
+    this.chart = view.chart;
+    this.candles = view.candles;
+    this.volume = view.volume;
     if (this.decimals != null) this.applyPriceFormat();
     if (this.candleData.length) {
       this.candles.setData(this.candleData);
@@ -241,6 +365,7 @@ class Tile {
     this.volumeData = [];
     this.candles?.setData([]);
     this.volume?.setData([]);
+    syncChartViewer(this, true);
   }
 
   // Keep the current candles on screen (dimmed) until the new interval's data arrives.
@@ -272,6 +397,7 @@ class Tile {
         if (refresh) ts.scrollToPosition(pos, false);
         else this.fitRange();
       }
+      syncChartViewer(this, !refresh);
     } else if (this.lastTime != null) {
       for (const b of bars) {
         if (b.time < this.lastTime) continue;
@@ -285,6 +411,7 @@ class Tile {
         }
         this.candles?.update(c);
         this.volume?.update(v);
+        updateChartViewerBar(this, c, v);
         this.lastTime = b.time;
       }
       // Keep memory bounded on a tile left open for days.
@@ -336,6 +463,7 @@ class Tile {
     else { this.candleData[this.candleData.length - 1] = c; this.volumeData[this.volumeData.length - 1] = v; }
     this.candles?.update(c);
     this.volume?.update(v);
+    updateChartViewerBar(this, c, v);
   }
 
   dropProvisional() {
@@ -345,6 +473,7 @@ class Tile {
     this.volumeData.pop();
     this.candles?.pop(1);
     this.volume?.pop(1);
+    popChartViewerBar(this);
   }
 
   // Apply the shared candle width and bring the latest candle back to the right edge.
@@ -360,12 +489,14 @@ class Tile {
     this.info = info;
     if (info.description) setText(this.ui.name, info.description);
     if (info.pricescale) { this.decimals = decimalsFor(info.pricescale); this.applyPriceFormat(); }
+    updateChartViewerHeader(this);
   }
 
   applyPriceFormat() {
-    if (!this.candles) return;
-    const ps = this.info?.pricescale || 10 ** this.decimals;
-    this.candles.applyOptions({ priceFormat: { type: 'price', precision: this.decimals, minMove: (this.info?.minmov || 1) / ps } });
+    applyChartPriceFormat(this.candles, this);
+    if (chartViewer.tile === this) {
+      applyChartPriceFormat(chartViewer.candles, this);
+    }
   }
 
   setQuote(q) {
@@ -410,6 +541,7 @@ class Tile {
     if (m) setText(delay, `${Math.round(Number(m[1]) / 60)} min delay`);
     else if (eod) setText(delay, 'End of day');
     setAttr(delay, 'title', eod ? 'TradingView only updates this symbol after the market closes' : m ? 'TradingView is sending delayed data for this symbol' : '');
+    updateChartViewerHeader(this);
   }
 
   renderPrice(price) {
@@ -424,6 +556,7 @@ class Tile {
   }
 
   destroy() {
+    closeChartViewer(this, false);
     visibility.unobserve(this.el);
     this.chart?.remove();
     this.el.remove();
@@ -1109,7 +1242,7 @@ let dragSym = null;
 function setupDrag(tile) {
   const el = tile.el;
   const head = $('.tile-head', el);
-  // Only the header starts a drag, so panning inside the chart still works.
+  // Only the header starts a drag, so chart clicks never reorder a tile.
   head.addEventListener('pointerdown', (e) => { if (!e.target.closest('.remove')) el.draggable = true; });
   el.addEventListener('pointerup', () => { el.draggable = false; });
   el.addEventListener('dragstart', (e) => {

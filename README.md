@@ -47,9 +47,9 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   If a symbol has nothing in the last 24 hours, its latest three stories from the past two weeks appear in an "Earlier headlines" section at the end, so quiet days don't leave it blank.
 - **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every chart, in every tab.
   For example, on 1W each candle is one week, and on 3M each candle is one quarter.
-- **Candle width**: the slider next to the interval switch sets how wide candles are on every chart, in every tab, so they always match across tiles.
+- **Candle width**: the slider next to the interval switch sets how wide candles are on every tile chart, in every tab, so they always match across tiles.
   It steps from 1 px to 15 px per candle (default 5 px). Slide right for wider candles (fewer on screen) and left for narrower ones (more history). Double-click the slider to reset it.
-  Drag left in a chart to see older candles. Because trading hours differ, the same number of hourly or 4-hour candles covers a different stretch of calendar time for a Taiwan stock or a crypto pair than for a US stock.
+  Because trading hours differ, the same number of hourly or 4-hour candles covers a different stretch of calendar time for a Taiwan stock or a crypto pair than for a US stock.
 - **Sort**: the sort button left of the interval switch opens a menu for ordering the open tab:
   - **Ticker A–Z / Z–A** (numbers sort naturally, so 0050 comes before 2330).
   - **Day change: gainers first / losers first**, by the day change % shown on each tile. Symbols without a price yet go last.
@@ -61,8 +61,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Remove**: hover a tile and click ×, or right-click it and pick Remove.
 - **Keyboard shortcuts** on the main screen: **← →** switch tabs (wrapping around), and **↑ ↓** scroll the open tab one row of tiles at a time, each row lining up just under the top bar.
   Arrow keys keep their usual job in the search box, the candle-width slider, the interval switch, a tile's ⋮⋮ handle (reorder) and menus. `/` jumps to the search box.
-- **Inside a chart**: drag to pan and pinch to zoom that one chart. Double-click to reset it to the slider's width.
-  The mouse wheel scrolls the page, not the chart.
+- **Inside a chart**: hover to read candle values, or click the chart to open an enlarged interactive view (keyboard: focus it and press Enter or Space).
+  In the enlarged view, scroll or pinch to zoom and drag to pan. Its position and zoom are independent, so the tile chart behind it never changes. Close it with ×, Esc or by clicking outside it.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).
 - **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late (and TAIEX as `INDEX:TAIEX` only updates at the end of the day), so the price and day change on Taiwan tiles, TAIEX included, come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
