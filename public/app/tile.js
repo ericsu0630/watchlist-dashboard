@@ -67,6 +67,11 @@ export class Tile extends CandleSeries {
     }
     const view = createChartView(this.ui.chart, false);
     this.chart = view.chart;
+    // The chart handles touch taps before the browser can emit a click.
+    const openViewer = () => openChartViewer(this);
+    this.chart.subscribeClick(openViewer);
+    // A tap immediately after closing can count as a double tap.
+    this.chart.subscribeDblClick(openViewer);
     this.candles = view.candles;
     this.volume = view.volume;
     if (this.decimals != null) this.applyPriceFormat();

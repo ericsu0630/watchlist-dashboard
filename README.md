@@ -65,7 +65,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Remove**: hover a tile and click ×, or right-click it and pick Remove.
 - **Keyboard shortcuts** on the main screen: **← →** switch tabs (wrapping around), and **↑ ↓** scroll the open tab one row of tiles at a time, each row lining up just under the top bar.
   Arrow keys keep their usual job in the search box, the candle-width slider, the interval switch, a tile's ⋮⋮ handle (reorder) and menus. `/` jumps to the search box.
-- **Inside a chart**: hover to read candle values, or click the chart to open an enlarged interactive view (keyboard: focus it and press Enter or Space).
+- **Inside a chart**: hover to read candle values. Click or tap the chart to open the enlarged view, or focus it and press Enter or Space.
   The header shows the same live price, day-change amount, and day-change percentage as the grid tile.
   The enlarged chart starts with the board's candle interval each time it opens. Use its selector to change the interval for that view only.
   Scroll or pinch to zoom and drag to pan. The enlarged chart keeps its own zoom and position. Close it with ×, Esc or by clicking outside it.
