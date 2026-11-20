@@ -174,6 +174,7 @@ function applyChartPriceFormat(series, tile) {
 
 const chartViewer = {
   dialog: $('#chart-viewer'), host: $('#chart-viewer-chart'), title: $('#chart-viewer-title'), meta: $('#chart-viewer-meta'), close: $('#chart-viewer-close'),
+  price: $('#chart-viewer-price'), change: $('#chart-viewer-change'),
   tile: null, chart: null, candles: null, volume: null, returnFocus: null,
 };
 
@@ -185,6 +186,10 @@ function updateChartViewerHeader(tile) {
   const description = tile.info?.description || tile.quote.description || tile.ui.name.textContent;
   setText(chartViewer.title, symbol);
   setText(chartViewer.meta, [exchange, description, tfPreset().label].filter(Boolean).join(' · '));
+  setText(chartViewer.price, tile.ui.price.textContent);
+  setText(chartViewer.change, tile.ui.change.textContent);
+  setAttr(chartViewer.change, 'class', tile.ui.change.className);
+  setAttr(chartViewer.change, 'aria-label', tile.ui.change.getAttribute('aria-label') ?? '');
   setAttr(chartViewer.close, 'aria-label', `Close ${symbol} enlarged chart`);
 }
 
@@ -421,7 +426,10 @@ class Tile {
       }
     }
     const last = bars.at(-1);
-    if (last && this.quote.lp == null) this.renderPrice(last.close);
+    if (last && this.quote.lp == null) {
+      this.renderPrice(last.close);
+      updateChartViewerHeader(this);
+    }
     if (this.decimals == null && last) { this.decimals = decimalsFor(0, last.close); this.applyPriceFormat(); }
     this.applyLive();
   }
