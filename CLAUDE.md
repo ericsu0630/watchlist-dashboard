@@ -39,7 +39,7 @@ The regression suite is **not in git**. It lives in `.claude-tests/` (git-ignore
   - Ticker mapping: `TWSE:x` → `x.TW`, `TPEX:x` → `x.TWO`, and TAIEX (`TWSE:TAIEX` / `INDEX:TAIEX`) → `^TWII`.
   - Candle boundaries follow TradingView: 1H candles start on the hour from 09:00, and 4H candles start at 09:00 and 13:00 Taipei time.
   - If Yahoo goes stale, data falls back to TradingView.
-- **Front end:** `public/app.js` holds tabs (`pd.tabs` in localStorage), tiles (`Tile extends CandleSeries`), the enlarged chart, sorting (per tab; day-change sorts re-sort at most once a minute), news, import/export and keyboard shortcuts. Tile charts are only built near the viewport. All colours are CSS custom properties at the top of `public/styles.css`, and the charts read theirs from the same place.
+- **Front end:** `public/app.js` is only the entry point; the code is in `public/app/*.js` (ES modules, one per part: `state.js` has tabs (`pd.tabs` in localStorage), `tile.js` has `Tile extends CandleSeries`, plus the enlarged chart, sorting (per tab; day-change sorts re-sort at most once a minute), news, import/export and keyboard shortcuts). The modules import each other in circles, so they only declare things at load and each exports a `setupX()` that registers its listeners; `app.js` calls them in a fixed order. Keep it that way: don't use another module's exports at the top level of a module. Tile charts are only built near the viewport. All colours are CSS custom properties at the top of `public/styles.css`, and the charts read theirs from the same place.
 - Design rules: every chart shows candles at the same width (one global slider), the interval buttons set the candle interval rather than a date range, and the theme is neutral greys.
 
 ## More context

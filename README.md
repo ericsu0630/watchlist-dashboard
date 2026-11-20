@@ -132,7 +132,13 @@ lib/yahoo-tw-intraday.js Today's 1H/4H candles for Taiwan listings from Yahoo股
 lib/demo-source.js   Simulated data and sample headlines for `npm run demo`
 public/index.html    Page layout
 public/styles.css    Dark theme
-public/app.js        Search, grid, interactive chart overlay, drag-to-reorder, and live updates. Tile charts are only built near the screen
+public/app.js        The page's entry point: starts each part below, in order, then draws the board
+public/app/          The page, one file per part (ES modules, no build step):
+                       state.js (tabs, symbols, saved settings), theme.js, util.js, chart.js (candles and live updates),
+                       tile.js (a tile; its chart is only built near the screen), chart-viewer.js (enlarged chart),
+                       board.js (grid, add/remove/move), tabs.js, sort.js, drag.js, menu.js (menus and dialogs),
+                       import-export.js, keys.js, timeframe.js, zoom.js, live.js (WebSocket, pause when hidden),
+                       search.js, chips.js, news.js
 public/timeframes.js Candle intervals, used by both the server and the browser
 public/symbols.js    The symbol id check (EXCHANGE:SYMBOL), used by both the server and the browser
 ```
