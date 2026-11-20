@@ -116,7 +116,7 @@ const toVolume = (b) => ({ time: toLocal(b.time), value: b.volume, color: b.clos
 // matched on the Taipei calendar: days, Monday-start weeks, months and quarters.
 const TPE = 8 * 3600;
 // On 1H and 4H the server already sends live candles for the session (built from Yahoo's minutes,
-// polled every 20 s); the live price keeps the newest one current in between. TradingView's intraday
+// polled once a minute); the live price keeps the newest one current in between. TradingView's intraday
 // candles start at 09:00 Taipei: 1H on the hour, 4H at 09:00 and 13:00.
 const LIVE_INTERVALS = new Set(['60', '240', 'D', 'W', 'M', '3M']);
 const INTRADAY = new Set(['60', '240']);
