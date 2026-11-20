@@ -17,6 +17,7 @@ import { createDemoSource } from './lib/demo-source.js';
 import { TIMEFRAMES, DEFAULT_TIMEFRAME } from './public/timeframes.js';
 import { createNewsService, NEWS_WINDOW_HOURS } from './lib/news.js';
 import { createSearchCache } from './lib/search-cache.js';
+import { isSymbol } from './public/symbols.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotEnv(path.join(__dirname, '.env'));
@@ -49,8 +50,7 @@ for (const family of ['barlow-semi-condensed', 'inter-tight']) {
 }
 app.get('/api/config', (_req, res) => res.json({ demo: DEMO }));
 const news = createNewsService(source);
-const SYMBOL_RE = /^[\w.!&\-]+:[\w.!&\-]+$/;
-const newsSymbols = (req) => [...new Set(String(req.query.symbols || '').split(',').map((s) => s.trim()).filter((s) => SYMBOL_RE.test(s)))].slice(0, 80);
+const newsSymbols = (req) => [...new Set(String(req.query.symbols || '').split(',').map((s) => s.trim()).filter(isSymbol))].slice(0, 80);
 // Latest headlines (last 24 hours) for the given symbols: /api/news?symbols=NASDAQ:AAPL,TWSE:2330
 // Answers at once from recent headlines (`refreshing: true` while newer ones load); add &fresh=1 to wait for them.
 app.get('/api/news', async (req, res) => {
@@ -318,7 +318,7 @@ wss.on('connection', (ws) => {
     const tf = TIMEFRAMES.some((t) => t.id === msg.tf) ? msg.tf : DEFAULT_TIMEFRAME;
     const gridIntervalChanged = tf !== ws.gridInterval;
     ws.gridInterval = tf;
-    const symbols = [...new Set(msg.symbols.filter((s) => typeof s === 'string' && /^[\w.!&\-]+:[\w.!&\-]+$/.test(s)))].slice(0, 80);
+    const symbols = [...new Set(msg.symbols.filter(isSymbol))].slice(0, 80);
 
     const wanted = new Map();
     for (const sym of symbols) {

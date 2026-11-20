@@ -1,4 +1,5 @@
 import { TIMEFRAMES, DEFAULT_TIMEFRAME } from './timeframes.js';
+import { isSymbol } from './symbols.js';
 
 const LWC = window.LightweightCharts;
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -22,7 +23,6 @@ const store = {
   get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
   set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable */ } },
 };
-const SYMBOL_RE = /^[\w.!&\-]+:[\w.!&\-]+$/;
 const state = {
   tf: store.get('pd.tf', DEFAULT_TIMEFRAME),
 };
@@ -56,7 +56,7 @@ function loadTabs() {
       id,
       name: (typeof t.name === 'string' && t.name.trim() ? t.name.trim() : 'Untitled').slice(0, TAB_NAME_MAX),
       // Keep the first copy of any symbol that somehow appears twice.
-      symbols: (Array.isArray(t.symbols) ? t.symbols : []).filter((s) => typeof s === 'string' && SYMBOL_RE.test(s) && !seenSymbols.has(s) && seenSymbols.add(s)),
+      symbols: (Array.isArray(t.symbols) ? t.symbols : []).filter((s) => isSymbol(s) && !seenSymbols.has(s) && seenSymbols.add(s)),
       sort: SORT_MODES.includes(t.sort) ? t.sort : 'none',
     };
   });
@@ -1026,7 +1026,7 @@ function parseImport(text) {
     symbols: (Array.isArray(t.symbols) ? t.symbols : []).flatMap((s) => {
       // TradingView ids are uppercase (NASDAQ:AAPL); a hand-edited "nasdaq:aapl" means the same symbol.
       const sym = typeof s === 'string' ? s.trim().toUpperCase() : '';
-      if (!SYMBOL_RE.test(sym)) { invalid++; return []; }
+      if (!isSymbol(sym)) { invalid++; return []; }
       if (seen.has(sym)) { repeated++; return []; } // a symbol lives in one tab: first one wins
       seen.add(sym);
       return [sym];
@@ -1511,7 +1511,7 @@ input.addEventListener('keydown', (e) => {
     const pick = results[active] || results[0];
     const typed = input.value.trim().toUpperCase();
     if (pick) choose(pick.id);
-    else if (SYMBOL_RE.test(typed)) choose(typed); // Exact EXCHANGE:SYMBOL
+    else if (isSymbol(typed)) choose(typed); // Exact EXCHANGE:SYMBOL
   } else if (e.key === 'Escape') { input.value = ''; closeResults(); input.blur(); }
 });
 input.addEventListener('blur', () => setTimeout(closeResults, 120));

@@ -134,6 +134,7 @@ public/index.html    Page layout
 public/styles.css    Dark theme
 public/app.js        Search, grid, interactive chart overlay, drag-to-reorder, and live updates. Tile charts are only built near the screen
 public/timeframes.js Candle intervals, used by both the server and the browser
+public/symbols.js    The symbol id check (EXCHANGE:SYMBOL), used by both the server and the browser
 ```
 
 TradingView-API is an unofficial community library and is not affiliated with TradingView.
