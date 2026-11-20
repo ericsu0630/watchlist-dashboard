@@ -69,14 +69,14 @@ export function createIndicatorRenderer(view, { compact = false } = {}) {
       if (lines[i]) {
         lines[i].applyOptions(options);
       } else {
-        lines.push(chart.addSeries(LineSeries, { ...options, lineWidth: 2, priceLineVisible: false }));
+        lines.push(chart.addSeries(LineSeries, { ...options, lineWidth: 1, priceLineVisible: false }));
       }
     }
     averages = settings.averages;
 
     if (settings.rsi && !rsi) {
       rsi = chart.addSeries(LineSeries, {
-        color: settings.rsiColor, lineWidth: compact ? 1 : 2, priceLineVisible: false,
+        color: settings.rsiColor, lineWidth: 1, priceLineVisible: false,
         title: compact ? 'RSI' : '',
         priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
