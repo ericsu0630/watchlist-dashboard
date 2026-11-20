@@ -1416,6 +1416,10 @@ zoomInput.addEventListener('dblclick', () => {
 // ------------------------------------------------------------ Live connection
 let ws = null;
 let wsRetry = 0;
+// After the tab has been hidden this long, nothing is watched until it's visible again.
+const HIDDEN_PAUSE_MS = 5 * 60_000;
+let paused = false;
+let pauseTimer = null;
 
 function connect() {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
@@ -1429,11 +1433,30 @@ function sendWatch() {
   if (ws?.readyState !== WebSocket.OPEN) {
     return;
   }
-  const watch = { type: 'watch', symbols: state.symbols, tf: state.tf };
-  if (chartViewer.dialog.open && chartViewer.tf !== state.tf) {
+  const watch = { type: 'watch', symbols: paused ? [] : state.symbols, tf: state.tf };
+  if (!paused && chartViewer.dialog.open && chartViewer.tf !== state.tf) {
     watch.viewer = { symbol: chartViewer.tile.symbol, tf: chartViewer.tf };
   }
   ws.send(JSON.stringify(watch));
+}
+function onVisibilityChange() {
+  clearTimeout(pauseTimer);
+  pauseTimer = null;
+  if (document.hidden) {
+    pauseTimer = setTimeout(() => {
+      paused = true;
+      sendWatch();
+    }, HIDDEN_PAUSE_MS);
+    return;
+  }
+  if (paused) {
+    paused = false;
+    sendWatch();
+  }
+}
+document.addEventListener('visibilitychange', onVisibilityChange);
+if (document.hidden) {
+  onVisibilityChange();
 }
 function handle(msg) {
   const tile = tiles.get(msg.symbol);

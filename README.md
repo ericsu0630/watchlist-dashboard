@@ -79,6 +79,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 
 Your tabs (names, symbols, order and sort settings), the open tab, the candle interval and the candle width are saved in your browser.
 Only the open tab's symbols stream live data. Switching back to a tab within a minute is instant; after that its prices catch up within a second or two.
+If the page stays hidden (another browser tab or a minimised window) for 5 minutes, live data stops until you come back, and the charts catch up within a second or two.
 
 ## Real-time data (optional)
 
