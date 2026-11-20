@@ -1,7 +1,8 @@
 import { $, announce } from './util.js';
 import { TIMEFRAMES } from '../timeframes.js';
 import { isSymbol } from '../symbols.js';
-import { state, allSymbols, save, SORT_MODES, TAB_NAME_MAX, newTabId, clampZoom } from './state.js';
+import { state, allSymbols, save, tiles, SORT_MODES, TAB_NAME_MAX, newTabId, clampZoom } from './state.js';
+import { parseIndicatorSettings, readIndicatorSettings, writeIndicatorSettings } from './indicator-settings.js';
 import { render } from './board.js';
 import { applySort, LIVE_SORTS, resortSoon, setSort } from './sort.js';
 import { menu, openMenu, closeMenu, choiceDialog } from './menu.js';
@@ -10,12 +11,11 @@ import { sendWatch } from './live.js';
 import { setTimeframe } from './timeframe.js';
 import { setZoom } from './zoom.js';
 
-// Export: every tab with its name, sort setting and symbols (in board order), plus the candle interval
-// and width, as a small JSON file.
+// Export tabs, board-wide chart settings and each symbol's indicators.
 function exportBoard() {
   const tabs = state.tabs.map((t) => ({ name: t.name, sort: t.sort, symbols: [...t.symbols] }));
-  // The board-wide chart settings too: candle interval (1h, 4h, 1d, 1w, 1mo, 3mo) and candle width in px.
-  const settings = { candleInterval: state.tf, candleWidthPx: state.zoom };
+  const indicators = Object.fromEntries(allSymbols().map((symbol) => [symbol, readIndicatorSettings(symbol)]));
+  const settings = { candleInterval: state.tf, candleWidthPx: state.zoom, indicators };
   const data = { app: 'watchlist-dashboard', version: 1, exportedAt: new Date().toISOString(), settings, tabs };
   const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: 'application/json' });
   const d = new Date();
@@ -62,6 +62,20 @@ function parseImport(text) {
   const settings = {};
   if (TIMEFRAMES.some((t) => t.id === st.candleInterval)) settings.tf = st.candleInterval;
   if (typeof st.candleWidthPx === 'number' && Number.isFinite(st.candleWidthPx)) settings.zoom = clampZoom(st.candleWidthPx);
+  const indicators = new Map();
+  if (st.indicators && typeof st.indicators === 'object' && !Array.isArray(st.indicators)) {
+    for (const [id, rawSettings] of Object.entries(st.indicators)) {
+      const symbol = id.trim().toUpperCase();
+      if (!seen.has(symbol) || indicators.has(symbol)) {
+        continue;
+      }
+      const prefs = parseIndicatorSettings(rawSettings);
+      if (Object.keys(prefs).length) {
+        indicators.set(symbol, prefs);
+      }
+    }
+  }
+  settings.indicators = indicators;
   return { tabs, invalid, repeated, symbols: seen.size, settings };
 }
 
@@ -88,6 +102,7 @@ async function importBoard(file) {
     body: `From ${file.name}. Replace swaps your current ${plural(state.tabs.length, 'tab')} and ${plural(mine, 'symbol')} for these. `
       + 'Merge keeps yours and adds these: tabs with the same name are combined, symbols you already have stay where they are, and tabs that would end up empty are left out.'
       + (changes.length ? ` Either way, it also sets the ${changes.join(' and ')}.` : '')
+      + (settings.indicators.size ? ` Both options also apply the file’s indicator settings for ${plural(settings.indicators.size, 'symbol')}.` : '')
       + (skipped.length ? ` Skipped: ${skipped.join(' and ')}.` : ''),
     choices: [{ value: 'cancel', label: 'Cancel' }, { value: 'merge', label: 'Merge with my tabs' }, { value: 'replace', label: 'Replace my tabs', danger: true }],
   });
@@ -119,6 +134,11 @@ async function importBoard(file) {
       + (emptyTabs ? `; ${plural(emptyTabs, 'tab')} left out because ${emptyTabs === 1 ? 'it' : 'they'} would have been empty` : ''));
   } else {
     return;
+  }
+  for (const [symbol, prefs] of settings.indicators) {
+    const indicators = { ...readIndicatorSettings(symbol), ...prefs };
+    writeIndicatorSettings(symbol, indicators);
+    tiles.get(symbol)?.setVolumeVisible(indicators.volume);
   }
   setSort(state.sort);
   save();

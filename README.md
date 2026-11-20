@@ -35,11 +35,11 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   Right-click a tab to rename or delete it, or focus it and press Delete. Deleting a tab removes its symbols too, so it asks first unless the tab is empty. The last remaining tab can't be deleted.
   To move a symbol to another tab, right-click its tile (or focus it and press Shift+F10) and pick the tab, or **New tab…** to start one. You can also drag a tile by its header onto a tab.
   Boards from before tabs existed open with everything in a tab called "Default".
-- **Import and export**: the ⋮ button at the right end of the tabs row has **Export**, which downloads your tabs and their symbols, plus the candle interval and candle width you have selected, as `watchlist-YYYY-MM-DD.json`, and **Import…**, which reads such a file back.
+- **Import and export**: the ⋮ button at the right end of the tabs row has **Export**, which downloads your tabs, symbols, candle interval, candle width, and per-symbol indicator settings as `watchlist-YYYY-MM-DD.json`, and **Import…**, which reads the file back.
   Importing asks whether to **merge** the file into your board (your tabs stay; tabs with the same name are combined, symbols you already have stay where they are, and tabs that would end up empty are left out) or **replace** your tabs and symbols with the file's.
-  Either way, the file's candle interval and candle width are applied too (the dialog says when they'd change).
+  Either way, valid chart settings from the file are applied. Indicator settings apply to the symbols listed in the file. Older exports without indicator settings leave those preferences alone.
   Symbols are matched ignoring case (a hand-edited `nasdaq:aapl` counts as `NASDAQ:AAPL`) and stored in TradingView's uppercase form. Handy as a backup, or to move your board to another browser or computer.
-  The file is plain JSON: `{ "settings": { "candleInterval": "1d", "candleWidthPx": 5 }, "tabs": [{ "name": "US", "sort": "asc", "symbols": ["NASDAQ:AAPL", …] }, …] }` (a bare list of symbols also imports, as a tab called "Imported").
+  The file is plain JSON. `settings.indicators` is keyed by symbol. For example, `"NASDAQ:AAPL": { "volume": true, "rsi": true, "rsiColor": "#a78bfa", "averages": [{ "type": "ema", "period": 20, "color": "#66c7ed" }] }`. A bare list of symbols also imports as a tab called "Imported".
 - **Add a symbol**: press `/` or click the search bar, type a ticker or company name (`AAPL`, `2330`, `bitcoin`), then pick a result with the arrow keys and Enter.
   If you already know the full TradingView id, type it (for example `TWSE:0050`) and press Enter.
   A symbol lives in one tab only. New symbols go into the open tab; if the symbol is already in a tab, that tab opens and its tile is pointed out instead (search results say which tab has it).

@@ -12,19 +12,47 @@ export function showSymbolVolume(symbol) {
   return store.get(settingsKey(symbol), null)?.volume !== false;
 }
 
-function loadSettings(symbol) {
-  const saved = store.get(settingsKey(symbol), null);
-  const averages = Array.isArray(saved?.averages) ? saved.averages.slice(0, MAX_AVERAGES) : [];
+export function parseIndicatorSettings(raw) {
+  const settings = {};
+  if (typeof raw?.volume === 'boolean') {
+    settings.volume = raw.volume;
+  }
+  if (typeof raw?.rsi === 'boolean') {
+    settings.rsi = raw.rsi;
+  }
+  if (validColor(raw?.rsiColor)) {
+    settings.rsiColor = raw.rsiColor.toLowerCase();
+  }
+  if (Array.isArray(raw?.averages)) {
+    const averages = [];
+    for (const row of raw.averages) {
+      if ((row?.type !== 'sma' && row?.type !== 'ema') || !validPeriod(row.period)) {
+        continue;
+      }
+      averages.push({
+        type: row.type, period: row.period,
+        color: validColor(row.color) ? row.color.toLowerCase() : AVERAGE_COLORS[averages.length],
+      });
+      if (averages.length === MAX_AVERAGES) {
+        break;
+      }
+    }
+    if (averages.length || !raw.averages.length) {
+      settings.averages = averages;
+    }
+  }
+  return settings;
+}
+
+export function readIndicatorSettings(symbol) {
   return {
-    volume: saved?.volume !== false,
-    rsi: saved?.rsi === true,
-    rsiColor: validColor(saved?.rsiColor) ? saved.rsiColor.toLowerCase() : COLORS.rsi,
-    averages: averages.map((row, i) => ({
-      type: row?.type === 'ema' ? 'ema' : 'sma',
-      period: validPeriod(row?.period) ? row.period : DEFAULT_PERIODS[i],
-      color: validColor(row?.color) ? row.color.toLowerCase() : AVERAGE_COLORS[i],
-    })),
+    volume: true, rsi: false, rsiColor: COLORS.rsi, averages: [],
+    ...parseIndicatorSettings(store.get(settingsKey(symbol), null)),
   };
+}
+
+export function writeIndicatorSettings(symbol, settings) {
+  store.set(settingsKey(symbol), settings);
 }
 
 export function setupIndicatorSettings(dialog) {
@@ -46,7 +74,7 @@ export function setupIndicatorSettings(dialog) {
 
   function saveSettings() {
     renderChart(settings);
-    store.set(settingsKey(symbol), settings);
+    writeIndicatorSettings(symbol, settings);
   }
 
   function renderRows() {
@@ -119,7 +147,7 @@ export function setupIndicatorSettings(dialog) {
   return {
     open(id, apply) {
       symbol = id;
-      settings = loadSettings(symbol);
+      settings = readIndicatorSettings(symbol);
       renderChart = apply;
       volume.checked = settings.volume;
       rsi.checked = settings.rsi;
