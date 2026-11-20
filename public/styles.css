@@ -292,7 +292,7 @@ main { padding: 10px 10px 32px; }
 }
 .grip svg { width: 8px; height: 14px; fill: currentColor; opacity: .55; }
 .tile:hover .grip svg, .grip:focus-visible svg { opacity: 1; }
-.remove { cursor: pointer; opacity: 0; transition: opacity .12s; }
+.remove { position: relative; top: -14px; right: -4px; cursor: pointer; opacity: 0; transition: opacity .12s; }
 .remove svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; fill: none; }
 .tile:hover .remove, .remove:focus-visible { opacity: 1; }
 .remove:hover { color: var(--down); background: #ff6e7f14; }
