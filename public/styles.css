@@ -267,12 +267,12 @@ button { font: inherit; color: inherit; }
   display: flex; align-items: center; gap: 12px; flex: none;
   padding: 0 20px 10px; border-bottom: 1px solid var(--line);
 }
-.indicator-button, .indicator-color, .indicator-average :is(select, [type="number"], button) {
+.indicator-button, .indicator-color, .indicator-grid-choice select, .indicator-average :is(select, [type="number"], button) {
   min-height: 36px; min-width: 0; padding: 0 8px;
   font: 600 14px/1 var(--num); color: var(--ink); background: var(--tile);
   border: 1px solid var(--line-strong); border-radius: 8px;
 }
-.indicator-button, .indicator-color, .indicator-average :is(select, button) { cursor: pointer; }
+.indicator-button, .indicator-color, .indicator-grid-choice select, .indicator-average :is(select, button) { cursor: pointer; }
 .indicator-button[aria-expanded="true"], .indicator-button:hover:not(:disabled), .indicator-average button:hover { background: var(--active); }
 .indicator-button:disabled { color: var(--muted); cursor: default; }
 .indicator-panel {
@@ -280,7 +280,7 @@ button { font: inherit; color: inherit; }
   padding: 10px 20px; background: var(--surface-raised); border-bottom: 1px solid var(--line);
 }
 .indicator-toggles { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-.indicator-rsi { display: flex; align-items: center; gap: 8px; }
+.indicator-rsi, .indicator-grid-choice { display: flex; align-items: center; gap: 8px; }
 .indicator-toggles label { display: flex; align-items: center; gap: 5px; min-height: 32px; cursor: pointer; }
 .indicator-toggles input[type="checkbox"] { accent-color: var(--accent); }
 .indicator-averages-head { display: flex; align-items: center; gap: 8px; }

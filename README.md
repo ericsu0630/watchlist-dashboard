@@ -39,7 +39,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   Importing asks whether to **merge** the file into your board (your tabs stay; tabs with the same name are combined, symbols you already have stay where they are, and tabs that would end up empty are left out) or **replace** your tabs and symbols with the file's.
   Either way, valid chart settings from the file are applied. Indicator settings apply to the symbols listed in the file. Older exports without indicator settings leave those preferences alone.
   Symbols are matched ignoring case (a hand-edited `nasdaq:aapl` counts as `NASDAQ:AAPL`) and stored in TradingView's uppercase form. Handy as a backup, or to move your board to another browser or computer.
-  The file is plain JSON. `settings.indicators` is keyed by symbol. For example, `"NASDAQ:AAPL": { "volume": true, "rsi": true, "rsiColor": "#a78bfa", "averages": [{ "type": "ema", "period": 20, "color": "#66c7ed" }] }`. A bare list of symbols also imports as a tab called "Imported".
+  The file is plain JSON. `settings.indicators` is keyed by symbol. For example, `"NASDAQ:AAPL": { "volume": true, "rsi": true, "rsiColor": "#a78bfa", "gridIndicator": "rsi", "averages": [{ "type": "ema", "period": 20, "color": "#66c7ed" }] }`. A bare list of symbols also imports as a tab called "Imported".
 - **Add a symbol**: press `/` or click the search bar, type a ticker or company name (`AAPL`, `2330`, `bitcoin`), then pick a result with the arrow keys and Enter.
   If you already know the full TradingView id, type it (for example `TWSE:0050`) and press Enter.
   A symbol lives in one tab only. New symbols go into the open tab; if the symbol is already in a tab, that tab opens and its tile is pointed out instead (search results say which tab has it).
@@ -69,7 +69,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   The header shows the same live price, day-change amount, and day-change percentage as the grid tile.
   The enlarged chart starts with the board's candle interval each time it opens. Use its selector to change the interval for that view only.
   Open **Indicators** to toggle Volume and RSI (14), customize the RSI line color (purple by default), or add up to three moving averages. Each can be SMA or EMA and has its own period in candles and color.
-  Indicators use the enlarged chart's interval and update with its candles. Volume starts on, and its switch controls the bars in both views. RSI and moving averages appear in the enlarged view. The browser remembers each symbol's setup.
+  When Volume and RSI are both enabled, use **Grid indicator** to choose which one appears on the tile. If only one is enabled, the tile shows that one. Volume is the default choice, and moving averages stay in the enlarged view.
+  Each chart calculates indicators from its own interval. The browser remembers each symbol's setup.
   Scroll or pinch to zoom and drag to pan. The enlarged chart keeps its own zoom and position. Close it with ×, Esc or by clicking outside it.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).

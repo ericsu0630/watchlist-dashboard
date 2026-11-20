@@ -8,10 +8,6 @@ const validPeriod = (period) => Number.isSafeInteger(period) && period >= 1;
 const validColor = (color) => typeof color === 'string' && /^#[\da-f]{6}$/i.test(color);
 const settingsKey = (symbol) => `pd.indicators.${symbol}`;
 
-export function showSymbolVolume(symbol) {
-  return store.get(settingsKey(symbol), null)?.volume !== false;
-}
-
 export function parseIndicatorSettings(raw) {
   const settings = {};
   if (typeof raw?.volume === 'boolean') {
@@ -22,6 +18,9 @@ export function parseIndicatorSettings(raw) {
   }
   if (validColor(raw?.rsiColor)) {
     settings.rsiColor = raw.rsiColor.toLowerCase();
+  }
+  if (raw?.gridIndicator === 'volume' || raw?.gridIndicator === 'rsi') {
+    settings.gridIndicator = raw.gridIndicator;
   }
   if (Array.isArray(raw?.averages)) {
     const averages = [];
@@ -46,7 +45,7 @@ export function parseIndicatorSettings(raw) {
 
 export function readIndicatorSettings(symbol) {
   return {
-    volume: true, rsi: false, rsiColor: COLORS.rsi, averages: [],
+    volume: true, rsi: false, rsiColor: COLORS.rsi, gridIndicator: 'volume', averages: [],
     ...parseIndicatorSettings(store.get(settingsKey(symbol), null)),
   };
 }
@@ -61,6 +60,8 @@ export function setupIndicatorSettings(dialog) {
   const volume = $('#chart-viewer-volume', panel);
   const rsi = $('#chart-viewer-rsi', panel);
   const rsiColor = $('#chart-viewer-rsi-color', panel);
+  const gridChoice = $('#chart-viewer-grid-choice', panel);
+  const gridIndicator = $('#chart-viewer-grid-indicator', gridChoice);
   const rows = $('#chart-viewer-averages', panel);
   const template = $('#chart-viewer-average-template', panel);
   const count = $('#chart-viewer-average-count', panel);
@@ -73,6 +74,7 @@ export function setupIndicatorSettings(dialog) {
   }
 
   function saveSettings() {
+    gridChoice.hidden = !(settings.volume && settings.rsi);
     renderChart(settings);
     writeIndicatorSettings(symbol, settings);
   }
@@ -132,6 +134,10 @@ export function setupIndicatorSettings(dialog) {
     settings.rsiColor = rsiColor.value;
     saveSettings();
   });
+  gridIndicator.addEventListener('change', () => {
+    settings.gridIndicator = gridIndicator.value;
+    saveSettings();
+  });
   add.addEventListener('click', () => {
     if (settings.averages.length >= MAX_AVERAGES) {
       return;
@@ -152,6 +158,8 @@ export function setupIndicatorSettings(dialog) {
       volume.checked = settings.volume;
       rsi.checked = settings.rsi;
       rsiColor.value = settings.rsiColor;
+      gridIndicator.value = settings.gridIndicator;
+      gridChoice.hidden = !(settings.volume && settings.rsi);
       setOpen(false);
       renderRows();
       renderChart(settings);

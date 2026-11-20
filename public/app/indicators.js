@@ -39,7 +39,7 @@ function relativeStrengthIndex(candles) {
   return points;
 }
 
-export function createIndicatorRenderer(view) {
+export function createIndicatorRenderer(view, { compact = false } = {}) {
   const { chart, candles, volume } = view;
   const { LineSeries, LineStyle } = window.LightweightCharts;
   let averages = [];
@@ -76,14 +76,15 @@ export function createIndicatorRenderer(view) {
 
     if (settings.rsi && !rsi) {
       rsi = chart.addSeries(LineSeries, {
-        color: settings.rsiColor, lineWidth: 2, priceLineVisible: false,
+        color: settings.rsiColor, lineWidth: compact ? 1 : 2, priceLineVisible: false,
+        title: compact ? 'RSI' : '',
         priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, 1);
-      candles.getPane().setStretchFactor(3);
+      candles.getPane().setStretchFactor(compact ? 2 : 3);
       rsi.getPane().setStretchFactor(1);
       for (const price of [30, 70]) {
-        rsi.createPriceLine({ price, color: COLORS.cross, lineStyle: LineStyle.Dashed, lineWidth: 1 });
+        rsi.createPriceLine({ price, color: COLORS.cross, lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: !compact });
       }
     } else if (!settings.rsi && rsi) {
       chart.removeSeries(rsi);

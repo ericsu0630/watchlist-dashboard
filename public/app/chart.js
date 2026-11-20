@@ -137,6 +137,7 @@ export function createChartView(host, interactive, tf) {
       fontFamily: CHART_FONT,
       fontSize: 12,
       attributionLogo: false,
+      panes: { enableResize: interactive },
     },
     grid: { vertLines: { visible: false }, horzLines: { color: COLORS.grid } },
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.24 } },

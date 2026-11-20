@@ -3,7 +3,8 @@ import { COLORS } from './theme.js';
 import { state, tfPreset, isIntraday } from './state.js';
 import { CandleSeries, createChartView, applyChartPriceFormat } from './chart.js';
 import { chartViewer, updateChartViewerHeader, openChartViewer, closeChartViewer } from './chart-viewer.js';
-import { showSymbolVolume } from './indicator-settings.js';
+import { readIndicatorSettings } from './indicator-settings.js';
+import { createIndicatorRenderer } from './indicators.js';
 import { removeSymbol, moveSymbol } from './board.js';
 import { setupDrag } from './drag.js';
 
@@ -75,7 +76,8 @@ export class Tile extends CandleSeries {
     this.chart.subscribeDblClick(openViewer);
     this.candles = view.candles;
     this.volume = view.volume;
-    this.setVolumeVisible(showSymbolVolume(this.symbol));
+    this.renderGridIndicators = createIndicatorRenderer(this, { compact: true });
+    this.setGridIndicators(readIndicatorSettings(this.symbol));
     if (this.decimals != null) this.applyPriceFormat();
     if (this.candleData.length) {
       this.candles.setData(this.candleData);
@@ -87,10 +89,9 @@ export class Tile extends CandleSeries {
     }
   }
 
-  setVolumeVisible(visible) {
-    if (this.volume && this.volume.options().visible !== visible) {
-      this.volume.applyOptions({ visible });
-    }
+  setGridIndicators({ volume, rsi, rsiColor, gridIndicator }) {
+    const showRsi = rsi && (!volume || gridIndicator === 'rsi');
+    this.renderGridIndicators?.({ volume: volume && !showRsi, rsi: showRsi, rsiColor, averages: [] });
   }
 
   // Free the chart's canvases while the tile is far off screen; remember where it was scrolled to.
@@ -99,6 +100,7 @@ export class Tile extends CandleSeries {
     const ts = this.chart.timeScale();
     this.view = { pos: ts.scrollPosition(), spacing: ts.options().barSpacing };
     this.chart.remove();
+    this.renderGridIndicators = null;
     this.chart = this.candles = this.volume = null;
   }
 

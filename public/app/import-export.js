@@ -138,7 +138,7 @@ async function importBoard(file) {
   for (const [symbol, prefs] of settings.indicators) {
     const indicators = { ...readIndicatorSettings(symbol), ...prefs };
     writeIndicatorSettings(symbol, indicators);
-    tiles.get(symbol)?.setVolumeVisible(indicators.volume);
+    tiles.get(symbol)?.setGridIndicators(indicators);
   }
   setSort(state.sort);
   save();

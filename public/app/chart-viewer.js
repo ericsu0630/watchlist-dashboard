@@ -73,7 +73,7 @@ export function openChartViewer(tile) {
   const renderIndicators = createIndicatorRenderer(chartViewer.series);
   indicators.open(tile.symbol, (settings) => {
     renderIndicators(settings);
-    tile.setVolumeVisible(settings.volume);
+    tile.setGridIndicators(settings);
   });
   seedChartViewer();
   chartViewer.close.focus();
