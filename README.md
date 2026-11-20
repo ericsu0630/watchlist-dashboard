@@ -68,6 +68,8 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Inside a chart**: hover to read candle values. Click or tap the chart to open the enlarged view, or focus it and press Enter or Space.
   The header shows the same live price, day-change amount, and day-change percentage as the grid tile.
   The enlarged chart starts with the board's candle interval each time it opens. Use its selector to change the interval for that view only.
+  Open **Indicators** to toggle Volume and RSI (14), or add up to three moving averages. Each can be SMA or EMA and has its own period in candles and color.
+  Indicators use the enlarged chart's interval and update with its candles. Volume starts on, and the browser remembers each symbol's setup.
   Scroll or pinch to zoom and drag to pan. The enlarged chart keeps its own zoom and position. Close it with ×, Esc or by clicking outside it.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).
@@ -135,7 +137,7 @@ public/styles.css    Dark theme
 public/app.js        The page's entry point: starts each part below, in order, then draws the board
 public/app/          The page, one file per part (ES modules, no build step):
                        state.js (tabs, symbols, saved settings), theme.js, util.js, chart.js (candles and live updates),
-                       tile.js (a tile; its chart is only built near the screen), chart-viewer.js (enlarged chart),
+                       tile.js (a tile; its chart is only built near the screen), chart-viewer.js, indicators.js and indicator-settings.js (enlarged chart),
                        board.js (grid, add/remove/move), tabs.js, sort.js, drag.js, menu.js (menus and dialogs),
                        import-export.js, keys.js, timeframe.js, zoom.js, live.js (WebSocket, pause when hidden),
                        search.js, chips.js, news.js

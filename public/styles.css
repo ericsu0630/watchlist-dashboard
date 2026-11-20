@@ -34,6 +34,8 @@
   --down: #ff6e7f;
   --accent: #93a5ff;
   --amber: #f2c46d;
+  --average-blue: #66c7ed;
+  --average-violet: #d79cf0;
 
   --num: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --ui: 'Inter Tight', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -261,13 +263,36 @@ button { font: inherit; color: inherit; }
   min-height: 64px; padding: 10px 14px 10px 20px;
 }
 .chart-viewer-toolbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none;
+  display: flex; align-items: center; gap: 12px; flex: none;
   padding: 0 20px 10px; border-bottom: 1px solid var(--line);
 }
+.indicator-button, .indicator-color, .indicator-average :is(select, [type="number"], button) {
+  min-height: 36px; min-width: 0; padding: 0 8px;
+  font: 600 14px/1 var(--num); color: var(--ink); background: var(--tile);
+  border: 1px solid var(--line-strong); border-radius: 8px;
+}
+.indicator-button, .indicator-color, .indicator-average :is(select, button) { cursor: pointer; }
+.indicator-button[aria-expanded="true"], .indicator-button:hover:not(:disabled), .indicator-average button:hover { background: var(--active); }
+.indicator-button:disabled { color: var(--muted); cursor: default; }
+.indicator-panel {
+  display: grid; gap: 8px; flex: none; max-height: min(285px, 48dvh); overflow-y: auto; overscroll-behavior: contain;
+  padding: 10px 20px; background: var(--surface-raised); border-bottom: 1px solid var(--line);
+}
+.indicator-toggles { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.indicator-toggles label { display: flex; align-items: center; gap: 5px; min-height: 32px; cursor: pointer; }
+.indicator-toggles input[type="checkbox"] { accent-color: var(--accent); }
+.indicator-averages-head { display: flex; align-items: center; gap: 8px; }
+.indicator-averages-head h3 { margin: 0; font: 600 15px/1 var(--num); }
+.indicator-averages-head span, .indicator-average-labels { color: var(--ink-2); font-size: 13px; }
+.indicator-averages { display: grid; gap: 6px; }
+.indicator-average { display: grid; grid-template-columns: minmax(54px, 86px) minmax(56px, 96px) 36px minmax(60px, max-content); align-items: center; gap: 6px; justify-content: start; }
+.indicator-averages:empty, .indicator-average-labels:has(+ .indicator-averages:empty) { display: none; }
+.indicator-color { width: 36px; padding: 4px; }
+.indicator-panel > button { justify-self: start; }
 .chart-viewer-titles { min-width: 0; }
 .chart-viewer-titles h2 { margin: 0; font: 700 24px/1.05 var(--num); letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chart-viewer-titles p { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--muted); }
-.chart-viewer-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.chart-viewer-hint { margin: 0 0 0 auto; font-size: 13px; color: var(--muted); }
 .chart-viewer-close {
   display: grid; place-items: center; width: 36px; height: 36px; padding: 0;
   background: none; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink-2); cursor: pointer;
@@ -276,13 +301,14 @@ button { font: inherit; color: inherit; }
 .chart-viewer-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .chart-viewer-body { position: relative; flex: 1; min-height: 0; }
 .chart-viewer-chart { position: absolute; inset: 0; }
+@media (max-width: 719px) { .chart-viewer-hint { display: none; } }
 @media (max-width: 599px) {
   .chart-viewer { width: calc(100vw - 16px); height: calc(100dvh - 16px); border-radius: 10px; }
   .chart-viewer-head { gap: 10px; padding-left: 14px; }
-  .chart-viewer-toolbar { padding-inline: 14px; }
+  .chart-viewer-toolbar { gap: 8px; padding-inline: 14px; }
   .chart-viewer-toolbar .tf { flex: 1; min-width: 0; }
   .chart-viewer-toolbar .tf button { flex: 1; min-width: 0; padding-inline: 4px; }
-  .chart-viewer-hint { display: none; }
+  .indicator-panel { padding-inline: 14px; }
 }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

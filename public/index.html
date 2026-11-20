@@ -85,8 +85,33 @@
     </header>
     <div class="chart-viewer-toolbar">
       <div class="tf" id="chart-viewer-tf" role="radiogroup" aria-label="Enlarged chart candle interval"></div>
+      <button class="indicator-button" id="chart-viewer-indicators" type="button" aria-expanded="false" aria-controls="chart-viewer-indicator-panel">Indicators</button>
       <p class="chart-viewer-hint">Scroll to zoom · Drag to pan</p>
     </div>
+    <section class="indicator-panel" id="chart-viewer-indicator-panel" aria-label="Chart indicators" hidden>
+      <div class="indicator-toggles">
+        <label><input id="chart-viewer-volume" type="checkbox"> Volume</label>
+        <label><input id="chart-viewer-rsi" type="checkbox"> RSI (14)</label>
+      </div>
+      <div class="indicator-averages-head">
+        <h3>Moving averages</h3>
+        <span id="chart-viewer-average-count" aria-live="polite"></span>
+      </div>
+      <div class="indicator-average indicator-average-labels" aria-hidden="true"><span>Type</span><span>Period</span><span>Color</span></div>
+      <div class="indicator-averages" id="chart-viewer-averages"></div>
+      <button class="indicator-button" id="chart-viewer-add-average" type="button">Add moving average</button>
+      <template id="chart-viewer-average-template">
+        <div class="indicator-average">
+          <select data-average-type>
+            <option value="sma">SMA</option>
+            <option value="ema">EMA</option>
+          </select>
+          <input data-average-period type="number" min="1" step="1">
+          <input class="indicator-color" data-average-color type="color">
+          <button data-average-remove type="button">Remove</button>
+        </div>
+      </template>
+    </section>
     <div class="chart-viewer-body">
       <div class="chart-viewer-chart" id="chart-viewer-chart"></div>
       <div class="state" id="chart-viewer-status" role="status" hidden></div>

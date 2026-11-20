@@ -1,6 +1,8 @@
 import { $, setText, setAttr, splitSymbol } from './util.js';
 import { state, tfPreset, isIntraday } from './state.js';
 import { CandleSeries, createChartView, applyChartPriceFormat } from './chart.js';
+import { createIndicatorRenderer } from './indicators.js';
+import { setupIndicatorSettings } from './indicator-settings.js';
 import { syncTfButtons } from './timeframe.js';
 import { sendWatch } from './live.js';
 
@@ -10,6 +12,7 @@ export const chartViewer = {
   intervals: $('#chart-viewer-tf'), status: $('#chart-viewer-status'),
   tile: null, tf: null, series: null, returnFocus: null,
 };
+let indicators;
 
 export function updateChartViewerHeader(tile) {
   if (chartViewer.tile !== tile) {
@@ -67,6 +70,7 @@ export function openChartViewer(tile) {
   chartViewer.dialog.showModal();
   chartViewer.series = Object.assign(new CandleSeries(), createChartView(chartViewer.host, true, chartViewer.tf));
   applyChartPriceFormat(chartViewer.series.candles, tile);
+  indicators.open(tile.symbol, createIndicatorRenderer(chartViewer.series));
   seedChartViewer();
   chartViewer.close.focus();
 }
@@ -123,6 +127,7 @@ export function handleChartViewerMessage(msg) {
 }
 
 export function setupChartViewer() {
+  indicators = setupIndicatorSettings(chartViewer.dialog);
   chartViewer.close.addEventListener('click', () => closeChartViewer());
   chartViewer.dialog.addEventListener('pointerdown', (e) => {
     if (e.target === chartViewer.dialog) {
@@ -132,6 +137,7 @@ export function setupChartViewer() {
   chartViewer.dialog.addEventListener('close', () => {
     const returnFocus = chartViewer.returnFocus;
     chartViewer.series?.chart.remove();
+    indicators.close();
     chartViewer.tile = chartViewer.tf = chartViewer.series = chartViewer.returnFocus = null;
     sendWatch();
     if (returnFocus?.isConnected) {
