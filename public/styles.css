@@ -276,8 +276,11 @@ button { font: inherit; color: inherit; }
 .indicator-button[aria-expanded="true"], .indicator-button:hover:not(:disabled), .indicator-average button:hover { background: var(--active); }
 .indicator-button:disabled { color: var(--muted); cursor: default; }
 .indicator-panel {
-  display: grid; gap: 8px; flex: none; max-height: min(285px, 48dvh); overflow-y: auto; overscroll-behavior: contain;
-  padding: 10px 20px; background: var(--surface-raised); border-bottom: 1px solid var(--line);
+  position: absolute; top: 12px; left: 12px; z-index: 1;
+  width: min(420px, calc(100% - 24px)); max-height: calc(100% - 24px);
+  display: grid; gap: 8px; overflow-y: auto; overscroll-behavior: contain; padding: 10px 20px;
+  background: color-mix(in srgb, var(--surface-raised) 80%, transparent);
+  border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 8px 24px #0006;
 }
 .indicator-toggles { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .indicator-rsi, .indicator-grid-choice { display: flex; align-items: center; gap: 8px; }
@@ -302,7 +305,7 @@ button { font: inherit; color: inherit; }
 .chart-viewer-close:hover { color: var(--down); background: #ff6e7f14; }
 .chart-viewer-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .chart-viewer-body { position: relative; flex: 1; min-height: 0; }
-.chart-viewer-chart { position: absolute; inset: 0; }
+.chart-viewer-chart { position: absolute; inset: 0; isolation: isolate; }
 @media (max-width: 719px) { .chart-viewer-hint { display: none; } }
 @media (max-width: 599px) {
   .chart-viewer { width: calc(100vw - 16px); height: calc(100dvh - 16px); border-radius: 10px; }
