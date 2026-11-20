@@ -70,7 +70,11 @@ export function openChartViewer(tile) {
   chartViewer.dialog.showModal();
   chartViewer.series = Object.assign(new CandleSeries(), createChartView(chartViewer.host, true, chartViewer.tf));
   applyChartPriceFormat(chartViewer.series.candles, tile);
-  indicators.open(tile.symbol, createIndicatorRenderer(chartViewer.series));
+  const renderIndicators = createIndicatorRenderer(chartViewer.series);
+  indicators.open(tile.symbol, (settings) => {
+    renderIndicators(settings);
+    tile.setVolumeVisible(settings.volume);
+  });
   seedChartViewer();
   chartViewer.close.focus();
 }

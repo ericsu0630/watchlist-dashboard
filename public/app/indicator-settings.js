@@ -8,6 +8,10 @@ const validPeriod = (period) => Number.isSafeInteger(period) && period >= 1;
 const validColor = (color) => typeof color === 'string' && /^#[\da-f]{6}$/i.test(color);
 const settingsKey = (symbol) => `pd.indicators.${symbol}`;
 
+export function showSymbolVolume(symbol) {
+  return store.get(settingsKey(symbol), null)?.volume !== false;
+}
+
 function loadSettings(symbol) {
   const saved = store.get(settingsKey(symbol), null);
   const averages = Array.isArray(saved?.averages) ? saved.averages.slice(0, MAX_AVERAGES) : [];

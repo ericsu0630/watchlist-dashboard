@@ -69,7 +69,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   The header shows the same live price, day-change amount, and day-change percentage as the grid tile.
   The enlarged chart starts with the board's candle interval each time it opens. Use its selector to change the interval for that view only.
   Open **Indicators** to toggle Volume and RSI (14), or add up to three moving averages. Each can be SMA or EMA and has its own period in candles and color.
-  Indicators use the enlarged chart's interval and update with its candles. Volume starts on, and the browser remembers each symbol's setup.
+  Indicators use the enlarged chart's interval and update with its candles. Volume starts on, and its switch controls the bars in both views. RSI and moving averages appear in the enlarged view. The browser remembers each symbol's setup.
   Scroll or pinch to zoom and drag to pan. The enlarged chart keeps its own zoom and position. Close it with ×, Esc or by clicking outside it.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).
