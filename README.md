@@ -1,10 +1,14 @@
 # Watchlist: a local portfolio dashboard
 
-A dark, four-column board of live candlestick charts for the symbols you track.
+A dark, responsive board of live candlestick charts for the symbols you track.
 Data comes from TradingView through [TradingView-API](https://github.com/Mathieu2301/TradingView-API).
 Charts are drawn with [Lightweight Charts](https://www.tradingview.com/lightweight-charts/).
 
-![The Watchlist dashboard in its dark grey theme: a grid of live candlestick charts for AAPL, BTCUSDT, DXY, ETHUSD, GOOG, MSFT, NFLX, NVDA and SPX, sorted A–Z on 1-hour candles](docs/screenshot.png)
+![Watchlist grid with symbol tabs, a News button, and eight candlestick charts](docs/screenshot.png)
+
+![Enlarged AAPL chart with the latest price and day change, plus its own candle interval selector](docs/screenshot-enlarged.png)
+
+Both screenshots use simulated prices from demo mode.
 
 ## Run it
 
@@ -20,7 +24,7 @@ Then open **http://localhost:3000**.
 
 To try the UI without a network connection, run `npm run demo`. It uses simulated prices.
 
-Everything the page needs, fonts included, is served from your machine. Only market data comes from TradingView.
+The server hosts the page, fonts, and chart library locally. In live mode, it fetches market data and headlines from TradingView and supplements Taiwan listings with data from Yahoo股市.
 
 After pulling new changes, run `npm install` again in case dependencies changed, then restart the server.
 
@@ -62,8 +66,9 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Keyboard shortcuts** on the main screen: **← →** switch tabs (wrapping around), and **↑ ↓** scroll the open tab one row of tiles at a time, each row lining up just under the top bar.
   Arrow keys keep their usual job in the search box, the candle-width slider, the interval switch, a tile's ⋮⋮ handle (reorder) and menus. `/` jumps to the search box.
 - **Inside a chart**: hover to read candle values, or click the chart to open an enlarged interactive view (keyboard: focus it and press Enter or Space).
-  The enlarged chart starts with the board's candle interval each time it opens. Its interval selector applies to that view only.
-  In the enlarged view, scroll or pinch to zoom and drag to pan. Its position and zoom are independent, so the tile chart behind it never changes. Close it with ×, Esc or by clicking outside it.
+  The header shows the same live price, day-change amount, and day-change percentage as the grid tile.
+  The enlarged chart starts with the board's candle interval each time it opens. Use its selector to change the interval for that view only.
+  Scroll or pinch to zoom and drag to pan. The enlarged chart keeps its own zoom and position. Close it with ×, Esc or by clicking outside it.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).
 - **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late (and TAIEX as `INDEX:TAIEX` only updates at the end of the day), so the price and day change on Taiwan tiles, TAIEX included, come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
@@ -112,6 +117,7 @@ Yahoo股市 and headline problems are also reported once, not per symbol, and a 
 ```
 server.js            Express + WebSocket server. Shares one upstream stream per symbol/interval across tabs, keeps it
                      warm for 60 s after the last tab leaves, and after a connection loss resumes streams a few at a time.
+                     Streams the enlarged chart's selected interval alongside the grid when they differ.
                      Serves fonts and the chart library
 lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one shared quote session, all on one connection
 lib/tv-connection.js That one connection: notices when it's lost (30 s of silence, or waking from sleep), reconnects with
@@ -124,7 +130,7 @@ lib/yahoo-tw-intraday.js Today's 1H/4H candles for Taiwan listings from Yahoo股
 lib/demo-source.js   Simulated data and sample headlines for `npm run demo`
 public/index.html    Page layout
 public/styles.css    Dark theme
-public/app.js        Search, grid, charts, drag-to-reorder, live updates. Charts are only built for tiles near the screen
+public/app.js        Search, grid, interactive chart overlay, drag-to-reorder, and live updates. Tile charts are only built near the screen
 public/timeframes.js Candle intervals, used by both the server and the browser
 ```
 
