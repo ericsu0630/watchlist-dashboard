@@ -16,6 +16,7 @@ import { createTradingViewSource } from './lib/tv-source.js';
 import { createDemoSource } from './lib/demo-source.js';
 import { TIMEFRAMES, DEFAULT_TIMEFRAME } from './public/timeframes.js';
 import { createNewsService, NEWS_WINDOW_HOURS } from './lib/news.js';
+import { createSearchCache } from './lib/search-cache.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotEnv(path.join(__dirname, '.env'));
@@ -67,11 +68,12 @@ app.post('/api/news/warm', (req, res) => {
   news.warm(newsSymbols(req));
   res.status(204).end();
 });
+const searches = createSearchCache((text) => source.search(text)); // remembered for 10 minutes
 app.get('/api/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) return res.json([]);
   try {
-    const results = await source.search(q);
+    const results = await searches.get(q);
     res.json(results.slice(0, 30));
   } catch (err) {
     console.error('[search]', err.code || '', err.message);

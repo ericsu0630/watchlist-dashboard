@@ -125,6 +125,7 @@ lib/tv-connection.js That one connection: notices when it's lost (30 s of silenc
                      backoff, and logs one line each way
 lib/log.js           One log line per repeating problem per interval
 lib/news.js          Headlines per symbol: 24-hour window (older fallback for quiet symbols), duplicates merged, 5-minute cache (older results shown at once while newer ones load)
+lib/search-cache.js  Symbol searches: remembered for 10 minutes, identical simultaneous searches share one request
 lib/yahoo-tw-news.js Yahoo股市 (zh-TW) headlines for Taiwan listings (TWSE:2330 -> 2330.TW, TPEX:6488 -> 6488.TWO), read from each stock's news page
 lib/yahoo-tw-quotes.js Live Yahoo股市 prices for Taiwan listings: one shared poll every 5 s for all of them (every 60 s after the close)
 lib/yahoo-tw-intraday.js Today's 1H/4H candles for Taiwan listings from Yahoo股市 minute data: one shared poll every minute (every 5 min after the close), plus one fetch just after each 1H/4H candle boundary
