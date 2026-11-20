@@ -12,17 +12,31 @@ Both screenshots use simulated prices from demo mode.
 
 ## Run it
 
-You need Node.js 20.19 or newer (`node -v` to check; `brew install node` if you don't have it).
+You need Node.js 20.19 or newer. Clone or download this repository and extract it if you downloaded a ZIP.
 
-```bash
-cd ~/claude/dashboard
+### macOS
+
+Install Node.js with `brew install node` if you use Homebrew. Open Terminal in the project folder containing `package.json`.
+
+### Windows
+
+Choose an LTS release on the Node.js download page and run the Windows Installer (`.msi`). [Download Node.js](https://nodejs.org/en/download)
+
+Open the project folder containing `package.json` in File Explorer. Type `cmd` in the address bar and press Enter to open Command Prompt in that folder.
+
+### Start the app
+
+Check your Node.js version, install dependencies, then start the local server.
+
+```sh
+node -v
 npm install
 npm start
 ```
 
-Then open **http://localhost:3000**.
+Keep the terminal open and visit [http://localhost:3000](http://localhost:3000) in your browser. Press Ctrl+C in the terminal to stop the server.
 
-To try the UI without a network connection, run `npm run demo`. It uses simulated prices.
+After installing dependencies, you can run `npm run demo` instead of `npm start` to try the app offline with simulated prices.
 
 The server hosts the page, fonts, and chart library locally. In live mode, it fetches market data and headlines from TradingView and supplements Taiwan listings with data from Yahoo股市.
 
