@@ -139,10 +139,15 @@ class Stream {
     this.sockets.delete(ws);
     if (this.sockets.size === 0 && !this.lingerTimer) this.lingerTimer = setTimeout(() => this.stop(), LINGER_MS);
   }
-  // Serializes once, however many tabs are listening.
+  // Serializes once, however many tabs are listening. With `cacheAs`, a message identical to the last
+  // one of its kind isn't sent again (Taiwan prices re-send unchanged Yahoo numbers on every delayed
+  // TradingView tick; measured 64-74% repeats).
   broadcast(msg, cacheAs) {
     const raw = JSON.stringify(msg);
-    if (cacheAs) this.cache[cacheAs] = raw;
+    if (cacheAs) {
+      if (this.cache[cacheAs] === raw) return;
+      this.cache[cacheAs] = raw;
+    }
     for (const ws of this.sockets) sendRaw(ws, raw);
   }
   async start() {
@@ -219,6 +224,7 @@ function candleStream(symbol, tf) {
   const preset = TIMEFRAMES.find((t) => t.id === tf) || TIMEFRAMES.find((t) => t.id === DEFAULT_TIMEFRAME);
   const s = new Stream(key, async (stream) => {
     let prevLastTime = null;
+    let prevTail = null; // last tail sent, so an unchanged one isn't sent again
     const handle = await source.watchCandles(symbol, preset.interval, preset.count, {
       onData(candles) {
         const lastTime = candles.at(-1)?.time;
@@ -230,8 +236,10 @@ function candleStream(symbol, tf) {
         let fullRaw = null;
         const full = () => (fullRaw ??= JSON.stringify({ type: 'bars', symbol, tf, full: true, bars: candles.map(toBar) }));
         stream.cache.bars = full;
-        if (!stream.sockets.size) return;
+        if (!stream.sockets.size) { prevTail = null; return; }
         const raw = tail ? JSON.stringify({ type: 'bars', symbol, tf, full: false, bars: candles.slice(-2).map(toBar) }) : full();
+        if (tail && raw === prevTail) return;
+        prevTail = tail ? raw : null;
         for (const ws of stream.sockets) sendRaw(ws, raw);
       },
       onError(err) {
