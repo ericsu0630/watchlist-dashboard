@@ -4,9 +4,9 @@ A dark, responsive board of live candlestick charts for the symbols you track.
 Data comes from TradingView through [TradingView-API](https://github.com/Mathieu2301/TradingView-API).
 Charts are drawn with [Lightweight Charts](https://www.tradingview.com/lightweight-charts/).
 
-![Watchlist grid with symbol tabs, a News button, and eight candlestick charts](docs/screenshot.png)
+![Watchlist grid with RSI below the AAPL candles and volume bars on the other tiles](docs/screenshot.png)
 
-![Enlarged AAPL chart with the latest price and day change, plus its own candle interval selector](docs/screenshot-enlarged.png)
+![Enlarged AAPL chart with the Indicators panel open, showing Volume, RSI, the grid indicator choice, and two moving averages](docs/screenshot-enlarged.png)
 
 Both screenshots use simulated prices from demo mode.
 
