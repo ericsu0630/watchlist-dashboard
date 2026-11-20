@@ -89,9 +89,9 @@ export class Tile extends CandleSeries {
     }
   }
 
-  setGridIndicators({ volume, rsi, rsiColor, gridIndicator }) {
+  setGridIndicators({ volume, rsi, rsiColor, gridIndicator, averages }) {
     const showRsi = rsi && (!volume || gridIndicator === 'rsi');
-    this.renderGridIndicators?.({ volume: volume && !showRsi, rsi: showRsi, rsiColor, averages: [] });
+    this.renderGridIndicators?.({ volume: volume && !showRsi, rsi: showRsi, rsiColor, averages });
   }
 
   // Free the chart's canvases while the tile is far off screen; remember where it was scrolled to.

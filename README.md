@@ -2,7 +2,7 @@
 
 Track stocks, ETFs, and crypto with candlestick charts and news in your browser.
 
-![Watchlist grid with RSI under the AAPL chart](docs/screenshot.png)
+![Watchlist grid with moving averages on the AAPL chart and RSI underneath](docs/screenshot.png)
 
 Screenshots use simulated prices.
 
@@ -38,6 +38,8 @@ The interval buttons and candle-width slider apply to the whole grid. Hover over
 Click or tap a chart to enlarge it. Scroll or pinch to zoom, and drag to pan. The enlarged view starts with the grid’s interval and lets you change its interval and zoom independently. Press Esc to close it.
 
 Open **Indicators** to show the settings over the chart. Turn Volume and RSI on or off, change the RSI color, or add up to three SMA or EMA lines with their own periods and colors.
+
+Moving averages also appear on the grid chart, using its candle interval and value-only price labels.
 
 If both Volume and RSI are on, use **Grid indicator** to choose which one shows on the tile. The app remembers your choices for each symbol.
 

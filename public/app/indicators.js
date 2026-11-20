@@ -104,8 +104,10 @@ export function createIndicatorRenderer(view, { compact = false } = {}) {
       if (lines[i]) {
         lines[i].applyOptions({ color });
       } else {
-        const line = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
-        attachAverageLabel(line, candles, () => averages[i]);
+        const line = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: compact, priceLineVisible: false });
+        if (!compact) {
+          attachAverageLabel(line, candles, () => averages[i]);
+        }
         lines.push(line);
       }
     }
