@@ -828,7 +828,8 @@ function parseImport(text) {
     name: (typeof t.name === 'string' && t.name.trim() ? t.name.trim() : 'Imported').slice(0, TAB_NAME_MAX),
     sort: SORT_MODES.includes(t.sort) ? t.sort : 'none',
     symbols: (Array.isArray(t.symbols) ? t.symbols : []).flatMap((s) => {
-      const sym = typeof s === 'string' ? s.trim() : '';
+      // TradingView ids are uppercase (NASDAQ:AAPL); a hand-edited "nasdaq:aapl" means the same symbol.
+      const sym = typeof s === 'string' ? s.trim().toUpperCase() : '';
       if (!SYMBOL_RE.test(sym)) { invalid++; return []; }
       if (seen.has(sym)) { repeated++; return []; } // a symbol lives in one tab: first one wins
       seen.add(sym);
@@ -855,7 +856,7 @@ async function importBoard(file) {
   const choice = await choiceDialog({
     title: `Import ${plural(tabs.length, 'tab')} and ${plural(symbols, 'symbol')}?`,
     body: `From ${file.name}. Replace swaps your current ${plural(state.tabs.length, 'tab')} and ${plural(mine, 'symbol')} for these. `
-      + 'Merge keeps yours and adds these: tabs with the same name are combined, and symbols you already have stay where they are.'
+      + 'Merge keeps yours and adds these: tabs with the same name are combined, symbols you already have stay where they are, and tabs that would end up empty are left out.'
       + (skipped.length ? ` Skipped: ${skipped.join(' and ')}.` : ''),
     choices: [{ value: 'cancel', label: 'Cancel' }, { value: 'merge', label: 'Merge with my tabs' }, { value: 'replace', label: 'Replace my tabs', danger: true }],
   });
@@ -865,18 +866,26 @@ async function importBoard(file) {
     state.activeTab = state.tabs[0].id;
     announce(`Imported ${plural(tabs.length, 'tab')} and ${plural(symbols, 'symbol')}, replacing your board`);
   } else if (choice === 'merge') {
-    let added = 0, kept = 0, newTabs = 0;
+    let added = 0, kept = 0, newTabs = 0, emptyTabs = 0;
+    // Symbols already on the board, matched ignoring case, stay where they are.
+    const onBoard = new Set(allSymbols().map((s) => s.toUpperCase()));
     for (const t of tabs) {
+      const fresh = t.symbols.filter((sym) => !onBoard.has(sym));
+      kept += t.symbols.length - fresh.length;
       let target = state.tabs.find((x) => x.name.toLowerCase() === t.name.toLowerCase());
-      if (!target) { target = { id: newTabId(), name: t.name, symbols: [], sort: t.sort }; state.tabs.push(target); newTabs++; }
-      for (const sym of t.symbols) {
-        if (tabOf(sym)) { kept++; continue; } // already on the board: stays in its tab
-        target.symbols.push(sym);
-        added++;
+      if (!target) {
+        // A new tab only if something would go in it.
+        if (!fresh.length) { emptyTabs++; continue; }
+        target = { id: newTabId(), name: t.name, symbols: [], sort: t.sort };
+        state.tabs.push(target);
+        newTabs++;
       }
+      for (const sym of fresh) { target.symbols.push(sym); onBoard.add(sym); added++; }
       applySort(target);
     }
-    announce(`Merged: added ${plural(added, 'symbol')} and ${plural(newTabs, 'new tab')}${kept ? `; ${plural(kept, 'symbol')} you already had stayed put` : ''}`);
+    announce(`Merged: added ${plural(added, 'symbol')} and ${plural(newTabs, 'new tab')}`
+      + (kept ? `; ${plural(kept, 'symbol')} you already had stayed put` : '')
+      + (emptyTabs ? `; ${plural(emptyTabs, 'tab')} left out because ${emptyTabs === 1 ? 'it' : 'they'} would have been empty` : ''));
   } else {
     return;
   }
