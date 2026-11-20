@@ -39,41 +39,6 @@ function relativeStrengthIndex(candles) {
   return points;
 }
 
-function attachAverageLabel(line, candles, getAverage) {
-  const empty = [];
-  let views, lastLabel, lastCoordinate, lastColor;
-  line.attachPrimitive({
-    priceAxisViews() {
-      const { noData, price, color } = line.lastValueData(false);
-      if (noData) {
-        return empty;
-      }
-      const coordinate = line.priceToCoordinate(price);
-      if (coordinate == null) {
-        return empty;
-      }
-      const { type, period } = getAverage();
-      const label = `${type.toUpperCase()} ${period}  ${candles.priceFormatter().format(price)}`;
-      if (label !== lastLabel || coordinate !== lastCoordinate || color !== lastColor) {
-        const rgb = Number.parseInt(color.slice(1), 16);
-        const brightness = (rgb >> 16) * 0.199 + ((rgb >> 8) & 255) * 0.687 + (rgb & 255) * 0.114;
-        const foreground = brightness > 160 ? '#000' : '#fff';
-        views = [{
-          coordinate: () => coordinate,
-          text: () => label,
-          backColor: () => color,
-          textColor: () => foreground,
-          tickVisible: () => false,
-        }];
-        lastLabel = label;
-        lastCoordinate = coordinate;
-        lastColor = color;
-      }
-      return views;
-    },
-  });
-}
-
 export function createIndicatorRenderer(view, { compact = false } = {}) {
   const { chart, candles, volume } = view;
   const { LineSeries, LineStyle } = window.LightweightCharts;
@@ -104,18 +69,13 @@ export function createIndicatorRenderer(view, { compact = false } = {}) {
       if (lines[i]) {
         lines[i].applyOptions({ color });
       } else {
-        const line = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: compact, priceLineVisible: false });
-        if (!compact) {
-          attachAverageLabel(line, candles, () => averages[i]);
-        }
-        lines.push(line);
+        lines.push(chart.addSeries(LineSeries, { color, lineWidth: 1, priceLineVisible: false }));
       }
     }
 
     if (settings.rsi && !rsi) {
       rsi = chart.addSeries(LineSeries, {
         color: settings.rsiColor, lineWidth: 1, priceLineVisible: false,
-        title: compact ? 'RSI' : '',
         priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, 1);

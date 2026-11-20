@@ -39,7 +39,7 @@ Click or tap a chart to enlarge it. Scroll or pinch to zoom, and drag to pan. Th
 
 Open **Indicators** to show the settings over the chart. Turn Volume and RSI on or off, change the RSI color, or add up to three SMA or EMA lines with their own periods and colors.
 
-Moving averages also appear on the grid chart, using its candle interval and value-only price labels.
+Moving averages also appear on the grid chart using its candle interval. Indicator labels show only their values in both views.
 
 If both Volume and RSI are on, use **Grid indicator** to choose which one shows on the tile. The app remembers your choices for each symbol.
 
