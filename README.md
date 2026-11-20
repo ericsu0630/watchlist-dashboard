@@ -45,7 +45,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   It opens instantly: the server keeps recent headlines ready (it starts fetching them a few seconds after the page loads) and shows them at once while it checks for newer ones.
   Go back with the Charts button, Esc or your browser's back button. Headlines come from TradingView's public news feed. Taiwan-listed symbols (TWSE and TPEX) also get Traditional Chinese headlines from Yahoo股市; a story carried by both sources shows once.
   If a symbol has nothing in the last 24 hours, its latest three stories from the past two weeks appear in an "Earlier headlines" section at the end, so quiet days don't leave it blank.
-- **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every chart, in every tab.
+- **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every tile chart, in every tab.
   For example, on 1W each candle is one week, and on 3M each candle is one quarter.
 - **Candle width**: the slider next to the interval switch sets how wide candles are on every tile chart, in every tab, so they always match across tiles.
   It steps from 1 px to 15 px per candle (default 5 px). Slide right for wider candles (fewer on screen) and left for narrower ones (more history). Double-click the slider to reset it.
@@ -62,6 +62,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Keyboard shortcuts** on the main screen: **← →** switch tabs (wrapping around), and **↑ ↓** scroll the open tab one row of tiles at a time, each row lining up just under the top bar.
   Arrow keys keep their usual job in the search box, the candle-width slider, the interval switch, a tile's ⋮⋮ handle (reorder) and menus. `/` jumps to the search box.
 - **Inside a chart**: hover to read candle values, or click the chart to open an enlarged interactive view (keyboard: focus it and press Enter or Space).
+  The enlarged chart starts with the board's candle interval each time it opens. Its interval selector applies to that view only.
   In the enlarged view, scroll or pinch to zoom and drag to pan. Its position and zoom are independent, so the tile chart behind it never changes. Close it with ×, Esc or by clicking outside it.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
   A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).

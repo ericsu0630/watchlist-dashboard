@@ -131,9 +131,12 @@ class Stream {
     clearTimeout(this.lingerTimer);
     this.lingerTimer = null;
     this.sockets.add(ws);
+    this.replay(ws);
+    if (!this.handle && !this.timer && !this.waiting) this.start();
+  }
+  replay(ws) {
     for (const entry of Object.values(this.cache)) sendRaw(ws, typeof entry === 'function' ? entry() : entry);
     if (this.error) send(ws, this.error);
-    if (!this.handle && !this.timer && !this.waiting) this.start();
   }
   remove(ws) {
     this.sockets.delete(ws);
@@ -311,6 +314,8 @@ wss.on('connection', (ws) => {
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type !== 'watch' || !Array.isArray(msg.symbols)) return;
     const tf = TIMEFRAMES.some((t) => t.id === msg.tf) ? msg.tf : DEFAULT_TIMEFRAME;
+    const gridIntervalChanged = tf !== ws.gridInterval;
+    ws.gridInterval = tf;
     const symbols = [...new Set(msg.symbols.filter((s) => typeof s === 'string' && /^[\w.!&\-]+:[\w.!&\-]+$/.test(s)))].slice(0, 80);
 
     const wanted = new Map();
@@ -318,11 +323,22 @@ wss.on('connection', (ws) => {
       wanted.set(`bars|${sym}|${tf}`, () => candleStream(sym, tf));
       wanted.set(`quote|${sym}`, () => quoteStream(sym));
     }
+    const viewer = msg.viewer;
+    if (symbols.includes(viewer?.symbol) && TIMEFRAMES.some((t) => t.id === viewer.tf)) {
+      wanted.set(`bars|${viewer.symbol}|${viewer.tf}`, () => candleStream(viewer.symbol, viewer.tf));
+    }
     for (const [key, stream] of ws.subs) {
       if (!wanted.has(key)) { stream.remove(ws); ws.subs.delete(key); }
     }
     for (const [key, make] of wanted) {
-      if (ws.subs.has(key)) continue;
+      const current = ws.subs.get(key);
+      if (current) {
+        // A grid interval can already be streaming for the enlarged chart.
+        if (gridIntervalChanged && key.startsWith('bars|') && key.endsWith(`|${tf}`)) {
+          current.replay(ws);
+        }
+        continue;
+      }
       const stream = make();
       ws.subs.set(key, stream);
       stream.add(ws);

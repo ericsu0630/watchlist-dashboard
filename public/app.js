@@ -92,8 +92,8 @@ const tpl = $('#tile-tpl');
 // ------------------------------------------------------------ Helpers
 // Lightweight Charts renders timestamps as UTC; shift them so axis labels read in local time.
 const toLocal = (t) => t - new Date(t * 1000).getTimezoneOffset() * 60;
-const tfPreset = () => TIMEFRAMES.find((t) => t.id === state.tf);
-const isIntraday = () => /^\d+$/.test(tfPreset().interval);
+const tfPreset = (id = state.tf) => TIMEFRAMES.find((t) => t.id === id);
+const isIntraday = (id) => /^\d+$/.test(tfPreset(id).interval);
 const splitSymbol = (id) => { const i = id.indexOf(':'); return [id.slice(0, i), id.slice(i + 1)]; };
 const ticker = (sym) => splitSymbol(sym)[1];
 
@@ -131,7 +131,107 @@ function periodIndex(t, interval) {
   return interval === 'M' ? months : Math.floor(months / 3);
 }
 
-function createChartView(host, interactive) {
+class CandleSeries {
+  candleData = [];
+  volumeData = [];
+  lastTime = null;
+  provisional = false;
+  chart = null;
+  candles = null;
+  volume = null;
+
+  replaceData(candles = [], volume = [], lastTime = null, provisional = false) {
+    this.candleData = candles;
+    this.volumeData = volume;
+    this.lastTime = lastTime;
+    this.provisional = provisional;
+    this.candles?.setData(candles);
+    this.volume?.setData(volume);
+  }
+
+  setBars(bars, full) {
+    if (full) {
+      this.replaceData(bars.map(toCandle), bars.map(toVolume), bars.at(-1)?.time ?? null);
+      return;
+    }
+    this.dropProvisional();
+    if (this.lastTime == null) {
+      return;
+    }
+    for (const b of bars) {
+      if (b.time < this.lastTime) {
+        continue;
+      }
+      const candle = toCandle(b);
+      const volume = toVolume(b);
+      this.setLastBar(candle, volume, this.candleData.at(-1)?.time !== candle.time);
+      this.lastTime = b.time;
+    }
+    if (this.candleData.length > 1500) {
+      this.candleData = this.candleData.slice(-1000);
+      this.volumeData = this.volumeData.slice(-1000);
+    }
+  }
+
+  // Keep the current candle in step with live Taiwan quotes between bar updates.
+  applyLive(live, interval) {
+    if (!live) {
+      this.dropProvisional();
+      return;
+    }
+    if (!live.time || this.lastTime == null || !this.candleData.length || !LIVE_INTERVALS.has(interval)) {
+      return;
+    }
+    const now = periodIndex(live.time, interval);
+    const lastPeriod = periodIndex(this.lastTime, interval);
+    const intraday = INTRADAY.has(interval);
+    if (now === lastPeriod && !this.provisional) {
+      const prev = this.candleData.at(-1);
+      const candle = {
+        time: prev.time, open: prev.open, close: live.lp,
+        high: Math.max(prev.high, live.lp, intraday ? -Infinity : live.high ?? -Infinity),
+        low: Math.min(prev.low, live.lp, intraday ? Infinity : live.low ?? Infinity),
+      };
+      const volume = { time: prev.time, value: this.volumeData.at(-1).value, color: candle.close >= candle.open ? COLORS.volUp : COLORS.volDown };
+      this.setLastBar(candle, volume, false);
+    } else if (!intraday && now > lastPeriod && live.open != null && live.high != null && live.low != null) {
+      // Draw a provisional candle until the delayed feed starts the new period.
+      if ((live.time + TPE) % 86400 < 9 * 3600) {
+        return;
+      }
+      const time = Math.floor((live.time + TPE) / 86400) * 86400 - TPE + 9 * 3600;
+      const candle = { time: toLocal(time), open: live.open, high: Math.max(live.high, live.lp), low: Math.min(live.low, live.lp), close: live.lp };
+      const volume = { time: candle.time, value: 0, color: candle.close >= candle.open ? COLORS.volUp : COLORS.volDown };
+      this.setLastBar(candle, volume, !this.provisional);
+      this.provisional = true;
+    }
+  }
+
+  setLastBar(candle, volume, append) {
+    if (append) {
+      this.candleData.push(candle);
+      this.volumeData.push(volume);
+    } else {
+      this.candleData[this.candleData.length - 1] = candle;
+      this.volumeData[this.volumeData.length - 1] = volume;
+    }
+    this.candles?.update(candle);
+    this.volume?.update(volume);
+  }
+
+  dropProvisional() {
+    if (!this.provisional) {
+      return;
+    }
+    this.provisional = false;
+    this.candleData.pop();
+    this.volumeData.pop();
+    this.candles?.pop(1);
+    this.volume?.pop(1);
+  }
+}
+
+function createChartView(host, interactive, tf) {
   const chart = LWC.createChart(host, {
     autoSize: true,
     layout: {
@@ -143,7 +243,7 @@ function createChartView(host, interactive) {
     },
     grid: { vertLines: { visible: false }, horzLines: { color: COLORS.grid } },
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.24 } },
-    timeScale: { borderVisible: false, rightOffset: 2, barSpacing: state.zoom, minBarSpacing: 0.5, timeVisible: isIntraday(), secondsVisible: false, fixLeftEdge: false },
+    timeScale: { borderVisible: false, rightOffset: 2, barSpacing: state.zoom, minBarSpacing: 0.5, timeVisible: isIntraday(tf), secondsVisible: false, fixLeftEdge: false },
     crosshair: {
       mode: LWC.CrosshairMode.Normal,
       vertLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
@@ -175,7 +275,8 @@ function applyChartPriceFormat(series, tile) {
 const chartViewer = {
   dialog: $('#chart-viewer'), host: $('#chart-viewer-chart'), title: $('#chart-viewer-title'), meta: $('#chart-viewer-meta'), close: $('#chart-viewer-close'),
   price: $('#chart-viewer-price'), change: $('#chart-viewer-change'),
-  tile: null, chart: null, candles: null, volume: null, returnFocus: null,
+  intervals: $('#chart-viewer-tf'), status: $('#chart-viewer-status'),
+  tile: null, tf: null, series: null, returnFocus: null,
 };
 
 function updateChartViewerHeader(tile) {
@@ -185,7 +286,7 @@ function updateChartViewerHeader(tile) {
   const [exchange, symbol] = splitSymbol(tile.symbol);
   const description = tile.info?.description || tile.quote.description || tile.ui.name.textContent;
   setText(chartViewer.title, symbol);
-  setText(chartViewer.meta, [exchange, description, tfPreset().label].filter(Boolean).join(' · '));
+  setText(chartViewer.meta, [exchange, description].filter(Boolean).join(' · '));
   setText(chartViewer.price, tile.ui.price.textContent);
   setText(chartViewer.change, tile.ui.change.textContent);
   setAttr(chartViewer.change, 'class', tile.ui.change.className);
@@ -194,9 +295,32 @@ function updateChartViewerHeader(tile) {
 }
 
 function resetChartViewerRange() {
-  const ts = chartViewer.chart.timeScale();
+  const ts = chartViewer.series.chart.timeScale();
   ts.applyOptions({ barSpacing: Math.max(state.zoom, 6) });
   ts.scrollToPosition(2, false);
+}
+
+function showChartViewerStatus(message) {
+  setText(chartViewer.status, message);
+  chartViewer.status.hidden = !message;
+}
+
+function seedChartViewer() {
+  const { tile, series, tf } = chartViewer;
+  if (tf === state.tf && tile.lastTime != null) {
+    series.replaceData(tile.candleData.slice(), tile.volumeData.slice(), tile.lastTime, tile.provisional);
+    showChartViewerStatus('');
+    resetChartViewerRange();
+    return;
+  }
+  series.replaceData();
+  if (tf === state.tf && tile.el.classList.contains('error')) {
+    showChartViewerStatus(tile.ui.state.textContent);
+  } else if (tf === state.tf && tile.el.classList.contains('ready') && !tile.el.classList.contains('switching')) {
+    showChartViewerStatus('No price history for this timeframe.');
+  } else {
+    showChartViewerStatus('Loading chart…');
+  }
 }
 
 function openChartViewer(tile) {
@@ -204,15 +328,28 @@ function openChartViewer(tile) {
     return;
   }
   chartViewer.tile = tile;
+  chartViewer.tf = state.tf;
   chartViewer.returnFocus = tile.ui.chart;
+  syncTfButtons(chartViewer.intervals, chartViewer.tf);
   updateChartViewerHeader(tile);
   chartViewer.dialog.showModal();
-  Object.assign(chartViewer, createChartView(chartViewer.host, true));
-  chartViewer.candles.setData(tile.candleData);
-  chartViewer.volume.setData(tile.volumeData);
-  applyChartPriceFormat(chartViewer.candles, tile);
-  resetChartViewerRange();
+  chartViewer.series = Object.assign(new CandleSeries(), createChartView(chartViewer.host, true, chartViewer.tf));
+  applyChartPriceFormat(chartViewer.series.candles, tile);
+  seedChartViewer();
   chartViewer.close.focus();
+}
+
+function setChartViewerTimeframe(id) {
+  if (!chartViewer.dialog.open || id === chartViewer.tf) {
+    return;
+  }
+  chartViewer.tf = id;
+  syncTfButtons(chartViewer.intervals, id);
+  const { chart } = chartViewer.series;
+  chart.applyOptions({ timeScale: { timeVisible: isIntraday(id) } });
+  chart.priceScale('right').applyOptions({ autoScale: true });
+  seedChartViewer();
+  sendWatch();
 }
 
 function closeChartViewer(tile = null, restoreFocus = true) {
@@ -227,36 +364,30 @@ function closeChartViewer(tile = null, restoreFocus = true) {
   }
 }
 
-function syncChartViewer(tile, reset) {
-  if (chartViewer.tile !== tile || !chartViewer.chart) {
+function handleChartViewerMessage(msg) {
+  const { tile, tf, series, dialog } = chartViewer;
+  if (!dialog.open || msg.symbol !== tile?.symbol || msg.tf !== tf) {
     return;
   }
-  const ts = chartViewer.chart.timeScale();
-  const pos = reset ? null : ts.scrollPosition();
-  chartViewer.chart.applyOptions({ timeScale: { timeVisible: isIntraday() } });
-  chartViewer.candles.setData(tile.candleData);
-  chartViewer.volume.setData(tile.volumeData);
-  if (reset && tile.candleData.length) {
-    resetChartViewerRange();
-  } else if (pos != null) {
-    ts.scrollToPosition(pos, false);
+  if (msg.type === 'bars') {
+    const ts = series.chart.timeScale();
+    const pos = msg.full && series.lastTime != null ? ts.scrollPosition() : null;
+    series.setBars(msg.bars, msg.full);
+    if (msg.full) {
+      showChartViewerStatus(series.lastTime == null ? 'No price history for this timeframe.' : '');
+      if (pos != null) {
+        ts.scrollToPosition(pos, false);
+      } else if (series.lastTime != null) {
+        resetChartViewerRange();
+      }
+    }
+    series.applyLive(tile.live, tfPreset(tf).interval);
+  } else if (msg.type === 'error') {
+    series.replaceData();
+    showChartViewerStatus(msg.message);
+  } else if (msg.type === 'retrying' && series.lastTime == null) {
+    showChartViewerStatus(msg.message);
   }
-}
-
-function updateChartViewerBar(tile, candle, volume) {
-  if (chartViewer.tile !== tile || !chartViewer.chart) {
-    return;
-  }
-  chartViewer.candles.update(candle);
-  chartViewer.volume.update(volume);
-}
-
-function popChartViewerBar(tile) {
-  if (chartViewer.tile !== tile || !chartViewer.chart) {
-    return;
-  }
-  chartViewer.candles.pop(1);
-  chartViewer.volume.pop(1);
 }
 
 chartViewer.close.addEventListener('click', () => closeChartViewer());
@@ -267,30 +398,26 @@ chartViewer.dialog.addEventListener('pointerdown', (e) => {
 });
 chartViewer.dialog.addEventListener('close', () => {
   const returnFocus = chartViewer.returnFocus;
-  chartViewer.chart?.remove();
-  chartViewer.tile = chartViewer.chart = chartViewer.candles = chartViewer.volume = chartViewer.returnFocus = null;
+  chartViewer.series?.chart.remove();
+  chartViewer.tile = chartViewer.tf = chartViewer.series = chartViewer.returnFocus = null;
+  sendWatch();
   if (returnFocus?.isConnected) {
     returnFocus.focus();
   }
 });
 
 // ------------------------------------------------------------ Tile
-class Tile {
+class Tile extends CandleSeries {
   constructor(symbol) {
+    super();
     this.symbol = symbol;
     this.el = tpl.content.firstElementChild.cloneNode(true);
     this.el.dataset.symbol = symbol;
     this.decimals = null;
-    this.lastTime = null;
     this.lastPrice = null;
     this.info = null;
     this.quote = {};
-    // Candle data lives here; the chart is only a view of it while the tile is on screen.
-    this.candleData = [];
-    this.volumeData = [];
     this.live = null; // live quote with today's open/high/low, when the price comes from a live source
-    this.provisional = false; // true while the last candle is a stand-in built from the live quote
-    this.chart = null;
     this.view = null; // { pos, spacing } saved when the chart is taken down, so it comes back where it was
     // Look up the tile's elements once.
     const q = (sel) => $(sel, this.el);
@@ -365,12 +492,7 @@ class Tile {
     this.el.classList.remove('ready', 'loading', 'switching');
     this.el.classList.add('error');
     this.ui.state.textContent = message;
-    this.provisional = false;
-    this.candleData = [];
-    this.volumeData = [];
-    this.candles?.setData([]);
-    this.volume?.setData([]);
-    syncChartViewer(this, true);
+    this.replaceData();
   }
 
   // Keep the current candles on screen (dimmed) until the new interval's data arrives.
@@ -381,49 +503,23 @@ class Tile {
   }
 
   setBars(bars, full) {
-    if (full) this.provisional = false; // replaced along with everything else
-    else this.dropProvisional();
     if (full) {
       // A fresh snapshot of the same interval (e.g. after a reconnect) keeps the user's pan position;
       // a new interval, first load or recovery from an error starts at the latest candle.
       const refresh = this.el.classList.contains('ready') && !this.el.classList.contains('switching');
-      this.candleData = bars.map(toCandle);
-      this.volumeData = bars.map(toVolume);
-      this.lastTime = bars.at(-1)?.time ?? null;
       this.el.classList.remove('loading', 'error', 'switching');
       this.el.classList.add('ready');
-      if (!refresh) this.view = null;
-      if (this.chart) {
-        const ts = this.chart.timeScale();
-        const pos = refresh ? ts.scrollPosition() : null;
-        this.chart.applyOptions({ timeScale: { timeVisible: isIntraday() } });
-        this.candles.setData(this.candleData);
-        this.volume.setData(this.volumeData);
-        if (refresh) ts.scrollToPosition(pos, false);
-        else this.fitRange();
+      const ts = this.chart?.timeScale();
+      const pos = refresh ? ts?.scrollPosition() : null;
+      this.chart?.applyOptions({ timeScale: { timeVisible: isIntraday() } });
+      super.setBars(bars, full);
+      if (pos != null) {
+        ts.scrollToPosition(pos, false);
+      } else if (!refresh) {
+        this.fitRange();
       }
-      syncChartViewer(this, !refresh);
-    } else if (this.lastTime != null) {
-      for (const b of bars) {
-        if (b.time < this.lastTime) continue;
-        const c = toCandle(b), v = toVolume(b);
-        if (this.candleData.at(-1)?.time === c.time) {
-          this.candleData[this.candleData.length - 1] = c;
-          this.volumeData[this.volumeData.length - 1] = v;
-        } else {
-          this.candleData.push(c);
-          this.volumeData.push(v);
-        }
-        this.candles?.update(c);
-        this.volume?.update(v);
-        updateChartViewerBar(this, c, v);
-        this.lastTime = b.time;
-      }
-      // Keep memory bounded on a tile left open for days.
-      if (this.candleData.length > 1500) {
-        this.candleData = this.candleData.slice(-1000);
-        this.volumeData = this.volumeData.slice(-1000);
-      }
+    } else {
+      super.setBars(bars, full);
     }
     const last = bars.at(-1);
     if (last && this.quote.lp == null) {
@@ -431,57 +527,7 @@ class Tile {
       updateChartViewerHeader(this);
     }
     if (this.decimals == null && last) { this.decimals = decimalsFor(0, last.close); this.applyPriceFormat(); }
-    this.applyLive();
-  }
-
-  // Draws the live price into the current candle. TradingView's own (delayed) update of that candle
-  // replaces it on its next tick, and this runs again right after, so the two never fight.
-  applyLive() {
-    const L = this.live;
-    const interval = tfPreset().interval;
-    if (!L || !L.time || this.lastTime == null || !this.candleData.length || !LIVE_INTERVALS.has(interval)) return;
-    if (this.el.classList.contains('switching')) return; // data still belongs to the previous interval
-    const now = periodIndex(L.time, interval);
-    const lastPeriod = periodIndex(this.lastTime, interval);
-    const intraday = INTRADAY.has(interval);
-    if (now === lastPeriod && !this.provisional) {
-      const prev = this.candleData.at(-1);
-      // The day's high and low only apply to daily-and-up candles; an hour's candle just takes the price.
-      const c = {
-        time: prev.time, open: prev.open, close: L.lp,
-        high: Math.max(prev.high, L.lp, intraday ? -Infinity : L.high ?? -Infinity),
-        low: Math.min(prev.low, L.lp, intraday ? Infinity : L.low ?? Infinity),
-      };
-      const v = { time: prev.time, value: this.volumeData.at(-1).value, color: c.close >= c.open ? COLORS.volUp : COLORS.volDown };
-      this.setLastBar(c, v, false);
-    } else if (!intraday && now > lastPeriod && L.open != null && L.high != null && L.low != null) {
-      // The market has opened in a new period but TradingView's delayed feed hasn't drawn its first
-      // candle yet (the first 15 minutes): stand in with today's numbers, volume unknown until then.
-      const time = Math.floor((L.time + TPE) / 86400) * 86400 - TPE + 9 * 3600; // 09:00 Taipei today, like TradingView
-      if ((L.time + TPE) % 86400 < 9 * 3600) return; // pre-open trial matching, not a trade
-      const c = { time: toLocal(time), open: L.open, high: Math.max(L.high, L.lp), low: Math.min(L.low, L.lp), close: L.lp };
-      const v = { time: c.time, value: 0, color: c.close >= c.open ? COLORS.volUp : COLORS.volDown };
-      this.setLastBar(c, v, !this.provisional);
-      this.provisional = true;
-    }
-  }
-
-  setLastBar(c, v, append) {
-    if (append) { this.candleData.push(c); this.volumeData.push(v); }
-    else { this.candleData[this.candleData.length - 1] = c; this.volumeData[this.volumeData.length - 1] = v; }
-    this.candles?.update(c);
-    this.volume?.update(v);
-    updateChartViewerBar(this, c, v);
-  }
-
-  dropProvisional() {
-    if (!this.provisional) return;
-    this.provisional = false;
-    this.candleData.pop();
-    this.volumeData.pop();
-    this.candles?.pop(1);
-    this.volume?.pop(1);
-    popChartViewerBar(this);
+    this.applyLive(this.live, tfPreset().interval);
   }
 
   // Apply the shared candle width and bring the latest candle back to the right edge.
@@ -503,7 +549,7 @@ class Tile {
   applyPriceFormat() {
     applyChartPriceFormat(this.candles, this);
     if (chartViewer.tile === this) {
-      applyChartPriceFormat(chartViewer.candles, this);
+      applyChartPriceFormat(chartViewer.series?.candles, this);
     }
   }
 
@@ -521,8 +567,10 @@ class Tile {
     this.live = quote.price_source && quote.lp != null
       ? { lp: quote.lp, time: quote.lp_time, open: q.day_open ?? null, high: q.day_high ?? null, low: q.day_low ?? null }
       : null;
-    if (this.live) this.applyLive();
-    else this.dropProvisional(); // back on TradingView's delayed data
+    this.applyLive(this.live, tfPreset().interval);
+    if (chartViewer.tile === this) {
+      chartViewer.series?.applyLive(this.live, tfPreset(chartViewer.tf).interval);
+    }
 
     const { change, session, delay } = this.ui;
     if (quote.ch != null && quote.chp != null) {
@@ -1292,28 +1340,33 @@ const clearDropMarks = () => document.querySelectorAll('.drop-before, .drop-afte
 
 // ------------------------------------------------------------ Timeframe
 const tfEl = $('#tf');
-for (const t of TIMEFRAMES) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.role = 'radio';
-  b.textContent = t.label;
-  b.title = t.hint;
-  b.dataset.tf = t.id;
-  b.addEventListener('click', () => setTimeframe(t.id));
-  tfEl.append(b);
+function setupTfButtons(group, getSelected, select) {
+  for (const t of TIMEFRAMES) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.role = 'radio';
+    b.textContent = t.label;
+    b.title = t.hint;
+    b.dataset.tf = t.id;
+    b.addEventListener('click', () => select(t.id));
+    group.append(b);
+  }
+  group.addEventListener('keydown', (e) => {
+    const direction = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!direction) {
+      return;
+    }
+    e.preventDefault();
+    const i = TIMEFRAMES.findIndex((t) => t.id === getSelected());
+    const next = (i + direction + TIMEFRAMES.length) % TIMEFRAMES.length;
+    select(TIMEFRAMES[next].id);
+    group.children[next].focus();
+  });
+  syncTfButtons(group, getSelected());
 }
-tfEl.addEventListener('keydown', (e) => {
-  const i = TIMEFRAMES.findIndex((t) => t.id === state.tf);
-  const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-  if (!d) return;
-  e.preventDefault();
-  const next = TIMEFRAMES[(i + d + TIMEFRAMES.length) % TIMEFRAMES.length];
-  setTimeframe(next.id);
-  tfEl.querySelector(`[data-tf="${next.id}"]`).focus();
-});
-function syncTfButtons() {
-  for (const b of tfEl.children) {
-    const on = b.dataset.tf === state.tf;
+function syncTfButtons(group, selected) {
+  for (const b of group.children) {
+    const on = b.dataset.tf === selected;
     b.setAttribute('aria-checked', String(on));
     b.tabIndex = on ? 0 : -1;
   }
@@ -1322,11 +1375,12 @@ function setTimeframe(id) {
   if (id === state.tf) return;
   state.tf = id;
   save();
-  syncTfButtons();
+  syncTfButtons(tfEl, state.tf);
   for (const tile of tiles.values()) tile.applyTimeframe();
   sendWatch();
 }
-syncTfButtons();
+setupTfButtons(tfEl, () => state.tf, setTimeframe);
+setupTfButtons(chartViewer.intervals, () => chartViewer.tf, setChartViewerTimeframe);
 
 // ------------------------------------------------------------ Candle width slider
 const zoomInput = $('#zoom-input');
@@ -1372,7 +1426,14 @@ function connect() {
   });
 }
 function sendWatch() {
-  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'watch', symbols: state.symbols, tf: state.tf }));
+  if (ws?.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  const watch = { type: 'watch', symbols: state.symbols, tf: state.tf };
+  if (chartViewer.dialog.open && chartViewer.tf !== state.tf) {
+    watch.viewer = { symbol: chartViewer.tile.symbol, tf: chartViewer.tf };
+  }
+  ws.send(JSON.stringify(watch));
 }
 function handle(msg) {
   const tile = tiles.get(msg.symbol);
@@ -1396,6 +1457,7 @@ function handle(msg) {
       if (tile && msg.tf === state.tf && !tile.el.classList.contains('ready')) tile.ui.state.textContent = msg.message;
       break;
   }
+  handleChartViewerMessage(msg);
 }
 
 // ------------------------------------------------------------ Search

@@ -257,8 +257,12 @@ button { font: inherit; color: inherit; }
 .chart-viewer[open] { display: flex; flex-direction: column; }
 .chart-viewer::backdrop { background: #000b; backdrop-filter: blur(3px); }
 .chart-viewer-head {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto auto 36px; align-items: center; gap: 20px; flex: none;
-  min-height: 64px; padding: 10px 14px 10px 20px; border-bottom: 1px solid var(--line);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 36px; align-items: center; gap: 20px; flex: none;
+  min-height: 64px; padding: 10px 14px 10px 20px;
+}
+.chart-viewer-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none;
+  padding: 0 20px 10px; border-bottom: 1px solid var(--line);
 }
 .chart-viewer-titles { min-width: 0; }
 .chart-viewer-titles h2 { margin: 0; font: 700 24px/1.05 var(--num); letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -274,7 +278,10 @@ button { font: inherit; color: inherit; }
 .chart-viewer-chart { position: absolute; inset: 0; }
 @media (max-width: 599px) {
   .chart-viewer { width: calc(100vw - 16px); height: calc(100dvh - 16px); border-radius: 10px; }
-  .chart-viewer-head { grid-template-columns: minmax(0, 1fr) auto 36px; gap: 10px; padding-left: 14px; }
+  .chart-viewer-head { gap: 10px; padding-left: 14px; }
+  .chart-viewer-toolbar { padding-inline: 14px; }
+  .chart-viewer-toolbar .tf { flex: 1; min-width: 0; }
+  .chart-viewer-toolbar .tf button { flex: 1; min-width: 0; padding-inline: 4px; }
   .chart-viewer-hint { display: none; }
 }
 
