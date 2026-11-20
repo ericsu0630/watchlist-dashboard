@@ -102,8 +102,14 @@ function decimalsFor(pricescale, price) {
   if (price == null) return 2;
   return Math.abs(price) < 1 ? 4 : 2;
 }
+const numberFormats = new Map(); // decimal count -> Intl.NumberFormat
 function fmt(n, d) {
-  return Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  let nf = numberFormats.get(d);
+  if (!nf) {
+    nf = new Intl.NumberFormat(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+    numberFormats.set(d, nf);
+  }
+  return nf.format(Number(n));
 }
 // DOM writes only when the value actually changes (quotes arrive every second).
 function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
