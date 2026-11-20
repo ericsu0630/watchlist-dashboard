@@ -68,7 +68,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
 - **Inside a chart**: hover to read candle values. Click or tap the chart to open the enlarged view, or focus it and press Enter or Space.
   The header shows the same live price, day-change amount, and day-change percentage as the grid tile.
   The enlarged chart starts with the board's candle interval each time it opens. Use its selector to change the interval for that view only.
-  Open **Indicators** to toggle Volume and RSI (14), or add up to three moving averages. Each can be SMA or EMA and has its own period in candles and color.
+  Open **Indicators** to toggle Volume and RSI (14), customize the RSI line color (purple by default), or add up to three moving averages. Each can be SMA or EMA and has its own period in candles and color.
   Indicators use the enlarged chart's interval and update with its candles. Volume starts on, and its switch controls the bars in both views. RSI and moving averages appear in the enlarged view. The browser remembers each symbol's setup.
   Scroll or pinch to zoom and drag to pan. The enlarged chart keeps its own zoom and position. Close it with ×, Esc or by clicking outside it.
 - The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.

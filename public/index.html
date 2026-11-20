@@ -91,7 +91,10 @@
     <section class="indicator-panel" id="chart-viewer-indicator-panel" aria-label="Chart indicators" hidden>
       <div class="indicator-toggles">
         <label><input id="chart-viewer-volume" type="checkbox"> Volume</label>
-        <label><input id="chart-viewer-rsi" type="checkbox"> RSI (14)</label>
+        <div class="indicator-rsi">
+          <label><input id="chart-viewer-rsi" type="checkbox"> RSI (14)</label>
+          <input class="indicator-color" id="chart-viewer-rsi-color" type="color" aria-label="RSI line color">
+        </div>
       </div>
       <div class="indicator-averages-head">
         <h3>Moving averages</h3>

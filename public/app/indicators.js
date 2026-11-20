@@ -76,7 +76,7 @@ export function createIndicatorRenderer(view) {
 
     if (settings.rsi && !rsi) {
       rsi = chart.addSeries(LineSeries, {
-        color: COLORS.indicator, lineWidth: 2, priceLineVisible: false,
+        color: settings.rsiColor, lineWidth: 2, priceLineVisible: false,
         priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, 1);
@@ -88,6 +88,8 @@ export function createIndicatorRenderer(view) {
     } else if (!settings.rsi && rsi) {
       chart.removeSeries(rsi);
       rsi = null;
+    } else if (rsi && rsi.options().color !== settings.rsiColor) {
+      rsi.applyOptions({ color: settings.rsiColor });
     }
     refresh();
   };

@@ -5,7 +5,7 @@ const css = (name) => getComputedStyle(document.documentElement).getPropertyValu
 export const COLORS = {
   up: css('--up'), down: css('--down'), text: css('--muted'), grid: css('--chart-grid'),
   cross: css('--crosshair'), label: css('--active'), lastPrice: css('--accent'),
-  indicator: css('--amber'),
+  rsi: css('--rsi'),
 };
 // Translucent versions for volume bars and the price tick flash (6-digit hex + alpha).
 Object.assign(COLORS, { volUp: `${COLORS.up}2e`, volDown: `${COLORS.down}2e`, flashUp: `${COLORS.up}33`, flashDown: `${COLORS.down}33` });

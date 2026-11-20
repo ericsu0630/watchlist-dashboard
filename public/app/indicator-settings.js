@@ -1,6 +1,6 @@
 import { $ } from './util.js';
 import { store } from './state.js';
-import { AVERAGE_COLORS } from './theme.js';
+import { AVERAGE_COLORS, COLORS } from './theme.js';
 
 const DEFAULT_PERIODS = [20, 50, 200];
 const MAX_AVERAGES = DEFAULT_PERIODS.length;
@@ -18,6 +18,7 @@ function loadSettings(symbol) {
   return {
     volume: saved?.volume !== false,
     rsi: saved?.rsi === true,
+    rsiColor: validColor(saved?.rsiColor) ? saved.rsiColor.toLowerCase() : COLORS.rsi,
     averages: averages.map((row, i) => ({
       type: row?.type === 'ema' ? 'ema' : 'sma',
       period: validPeriod(row?.period) ? row.period : DEFAULT_PERIODS[i],
@@ -31,6 +32,7 @@ export function setupIndicatorSettings(dialog) {
   const panel = $('#chart-viewer-indicator-panel', dialog);
   const volume = $('#chart-viewer-volume', panel);
   const rsi = $('#chart-viewer-rsi', panel);
+  const rsiColor = $('#chart-viewer-rsi-color', panel);
   const rows = $('#chart-viewer-averages', panel);
   const template = $('#chart-viewer-average-template', panel);
   const count = $('#chart-viewer-average-count', panel);
@@ -98,6 +100,10 @@ export function setupIndicatorSettings(dialog) {
     settings.rsi = rsi.checked;
     saveSettings();
   });
+  rsiColor.addEventListener('change', () => {
+    settings.rsiColor = rsiColor.value;
+    saveSettings();
+  });
   add.addEventListener('click', () => {
     if (settings.averages.length >= MAX_AVERAGES) {
       return;
@@ -117,6 +123,7 @@ export function setupIndicatorSettings(dialog) {
       renderChart = apply;
       volume.checked = settings.volume;
       rsi.checked = settings.rsi;
+      rsiColor.value = settings.rsiColor;
       setOpen(false);
       renderRows();
       renderChart(settings);
