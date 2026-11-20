@@ -793,6 +793,117 @@ $('#tab-add').addEventListener('click', () => {
   startRename(tab.id);
 });
 
+// Export: every tab with its name, sort setting and symbols (in board order) as a small JSON file.
+function exportBoard() {
+  const tabs = state.tabs.map((t) => ({ name: t.name, sort: t.sort, symbols: [...t.symbols] }));
+  const data = { app: 'watchlist-dashboard', version: 1, exportedAt: new Date().toISOString(), tabs };
+  const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: 'application/json' });
+  const d = new Date();
+  const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `watchlist-${day}.json`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  const n = tabs.reduce((sum, t) => sum + t.symbols.length, 0);
+  announce(`Exported ${n} symbol${n === 1 ? '' : 's'} in ${tabs.length} tab${tabs.length === 1 ? '' : 's'}`);
+}
+
+// Import: a file from Export (or the same shape). A dialog asks whether to merge it into the board or
+// replace the board with it.
+const importInput = $('#import-file');
+const IMPORT_MAX_BYTES = 1_000_000;
+function parseImport(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error('This file isn’t valid JSON.'); }
+  // Our export, or a bare list of symbols.
+  const raw = Array.isArray(data?.tabs) ? data.tabs : Array.isArray(data) ? [{ name: 'Imported', symbols: data }] : null;
+  if (!raw) throw new Error('This doesn’t look like a Watchlist export: there’s no list of tabs in it.');
+  const seen = new Set();
+  let invalid = 0, repeated = 0;
+  const tabs = raw.filter((t) => t && typeof t === 'object').map((t) => ({
+    name: (typeof t.name === 'string' && t.name.trim() ? t.name.trim() : 'Imported').slice(0, TAB_NAME_MAX),
+    sort: SORT_MODES.includes(t.sort) ? t.sort : 'none',
+    symbols: (Array.isArray(t.symbols) ? t.symbols : []).flatMap((s) => {
+      const sym = typeof s === 'string' ? s.trim() : '';
+      if (!SYMBOL_RE.test(sym)) { invalid++; return []; }
+      if (seen.has(sym)) { repeated++; return []; } // a symbol lives in one tab: first one wins
+      seen.add(sym);
+      return [sym];
+    }),
+  }));
+  if (!tabs.length) throw new Error('There are no tabs in this file.');
+  return { tabs, invalid, repeated, symbols: seen.size };
+}
+
+async function importBoard(file) {
+  const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
+  let parsed;
+  try {
+    if (file.size > IMPORT_MAX_BYTES) throw new Error('This file is too large to be a Watchlist export.');
+    parsed = parseImport(await file.text());
+  } catch (err) {
+    await choiceDialog({ title: 'Can’t import this file', body: `${file.name}: ${err.message} Nothing was changed.`, choices: [{ value: 'ok', label: 'OK' }] });
+    return;
+  }
+  const { tabs, invalid, repeated, symbols } = parsed;
+  const mine = allSymbols().length;
+  const skipped = [invalid && `${plural(invalid, 'entry', 'entries')} that ${invalid === 1 ? 'isn’t a symbol' : 'aren’t symbols'}`, repeated && `${plural(repeated, 'repeated symbol')}`].filter(Boolean);
+  const choice = await choiceDialog({
+    title: `Import ${plural(tabs.length, 'tab')} and ${plural(symbols, 'symbol')}?`,
+    body: `From ${file.name}. Replace swaps your current ${plural(state.tabs.length, 'tab')} and ${plural(mine, 'symbol')} for these. `
+      + 'Merge keeps yours and adds these: tabs with the same name are combined, and symbols you already have stay where they are.'
+      + (skipped.length ? ` Skipped: ${skipped.join(' and ')}.` : ''),
+    choices: [{ value: 'cancel', label: 'Cancel' }, { value: 'merge', label: 'Merge with my tabs' }, { value: 'replace', label: 'Replace my tabs', danger: true }],
+  });
+  if (choice === 'replace') {
+    state.tabs = tabs.map((t) => ({ id: newTabId(), ...t }));
+    if (!state.tabs.length) state.tabs = [{ id: newTabId(), name: 'Default', symbols: [], sort: 'none' }];
+    state.activeTab = state.tabs[0].id;
+    announce(`Imported ${plural(tabs.length, 'tab')} and ${plural(symbols, 'symbol')}, replacing your board`);
+  } else if (choice === 'merge') {
+    let added = 0, kept = 0, newTabs = 0;
+    for (const t of tabs) {
+      let target = state.tabs.find((x) => x.name.toLowerCase() === t.name.toLowerCase());
+      if (!target) { target = { id: newTabId(), name: t.name, symbols: [], sort: t.sort }; state.tabs.push(target); newTabs++; }
+      for (const sym of t.symbols) {
+        if (tabOf(sym)) { kept++; continue; } // already on the board: stays in its tab
+        target.symbols.push(sym);
+        added++;
+      }
+      applySort(target);
+    }
+    announce(`Merged: added ${plural(added, 'symbol')} and ${plural(newTabs, 'new tab')}${kept ? `; ${plural(kept, 'symbol')} you already had stayed put` : ''}`);
+  } else {
+    return;
+  }
+  setSort(state.sort);
+  save();
+  render();
+  sendWatch();
+  warmNews();
+  if (LIVE_SORTS.has(state.sort)) resortSoon();
+  scrollTo(0, 0);
+}
+importInput.addEventListener('change', () => {
+  const file = importInput.files?.[0];
+  importInput.value = ''; // so choosing the same file again still counts as a change
+  if (file) importBoard(file);
+});
+
+// The ⋮ button at the end of the tabs row: Import and Export.
+const moreBtn = $('#tab-more');
+moreBtn.addEventListener('click', () => {
+  if (!menu.hidden && menu.dataset.for === 'more') { closeMenu(); return; }
+  openMenu({}, moreBtn, 'Import or export your tabs', [
+    { label: 'Import…', hint: '.json', action: () => importInput.click() },
+    { label: 'Export', hint: '.json', action: exportBoard },
+  ], 'more');
+});
+
 // Drop a dragged tile on a tab to move it there.
 tabList.addEventListener('dragover', (e) => {
   const b = e.target.closest('.tab');
@@ -946,14 +1057,28 @@ addEventListener('resize', () => closeMenu(false));
 addEventListener('scroll', () => closeMenu(false), { passive: true });
 
 const confirmEl = $('#confirm');
-function confirmDialog({ title, body, ok }) {
+// A dialog with a choice of buttons ({ value, label, danger, id }); resolves to the chosen value, or
+// 'cancel' (Esc). Focus starts on the first button, which should be the safe one.
+function choiceDialog({ title, body, choices }) {
   $('#confirm-title').textContent = title;
   $('#confirm-body').textContent = body;
-  $('#confirm-ok').textContent = ok;
+  $('#confirm-actions').replaceChildren(...choices.map((c) => {
+    const b = document.createElement('button');
+    b.type = 'submit';
+    b.value = c.value;
+    b.textContent = c.label;
+    if (c.danger) b.className = 'danger';
+    if (c.id) b.id = c.id;
+    return b;
+  }));
   confirmEl.returnValue = '';
   confirmEl.showModal();
-  $('#confirm button[value="cancel"]').focus(); // the safe choice, so a stray Enter doesn't delete
-  return new Promise((resolve) => confirmEl.addEventListener('close', () => resolve(confirmEl.returnValue === 'ok'), { once: true }));
+  $('#confirm-actions button').focus(); // the safe choice, so a stray Enter doesn't do anything drastic
+  return new Promise((resolve) => confirmEl.addEventListener('close', () => resolve(confirmEl.returnValue || 'cancel'), { once: true }));
+}
+function confirmDialog({ title, body, ok }) {
+  return choiceDialog({ title, body, choices: [{ value: 'cancel', label: 'Cancel' }, { value: 'ok', label: ok, danger: true, id: 'confirm-ok' }] })
+    .then((v) => v === 'ok');
 }
 
 // ------------------------------------------------------------ Drag to reorder

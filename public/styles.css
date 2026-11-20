@@ -204,6 +204,12 @@ button { font: inherit; color: inherit; }
 }
 .tab-add:hover { color: var(--ink); background: var(--tile); border-color: var(--line-strong); }
 .tab-add svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.tab-more {
+  flex: none; display: grid; place-items: center; width: 30px; height: 30px; margin: 0 0 4px auto; padding: 0;
+  background: none; border: 1px solid transparent; border-radius: 7px; cursor: pointer; color: var(--muted);
+}
+.tab-more:hover, .tab-more[aria-expanded="true"] { color: var(--ink); background: var(--tile); border-color: var(--line-strong); }
+.tab-more svg { width: 16px; height: 16px; fill: currentColor; }
 
 /* ---------- Right-click menu and confirmation ---------- */
 .menu {
@@ -234,7 +240,7 @@ button { font: inherit; color: inherit; }
 .confirm::backdrop { background: #0009; }
 .confirm h2 { margin: 0 0 8px; font: 600 22px/1.15 var(--num); overflow-wrap: anywhere; }
 .confirm p { margin: 0 0 20px; color: var(--ink-2); font-size: 14px; }
-.confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .confirm-actions button {
   height: 36px; padding: 0 14px; border-radius: 8px; cursor: pointer;
   background: var(--tile); border: 1px solid var(--line-strong); color: var(--ink); font: 600 14px/1 var(--num); letter-spacing: .02em;

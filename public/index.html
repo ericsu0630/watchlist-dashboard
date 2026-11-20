@@ -53,19 +53,20 @@
       <button class="tab-add" id="tab-add" type="button" aria-label="Add a tab" title="Add a tab">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
       </button>
+      <button class="tab-more" id="tab-more" type="button" aria-label="Import or export your tabs" title="Import or export your tabs" aria-haspopup="menu" aria-expanded="false">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.25" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="8" cy="12.75" r="1.4"/></svg>
+      </button>
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
     </nav>
   </header>
 
-  <!-- Right-click menus for tiles and tabs, and the delete-tab confirmation. -->
+  <!-- Menus (right-click, sort, ⋮) and the confirmation dialog (deleting a tab, importing). -->
   <div class="menu" id="menu" role="menu" hidden></div>
   <dialog class="confirm" id="confirm" aria-labelledby="confirm-title">
     <form method="dialog">
       <h2 id="confirm-title"></h2>
       <p id="confirm-body"></p>
-      <div class="confirm-actions">
-        <button type="submit" value="cancel">Cancel</button>
-        <button type="submit" value="ok" class="danger" id="confirm-ok">Delete</button>
-      </div>
+      <div class="confirm-actions" id="confirm-actions"></div>
     </form>
   </dialog>
   <div class="sr-only" id="announce" role="status" aria-live="polite"></div>
