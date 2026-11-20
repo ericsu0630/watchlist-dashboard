@@ -1,32 +1,19 @@
-# Watchlist: a local portfolio dashboard
+# Watchlist
 
-A dark, responsive board of live candlestick charts for the symbols you track.
-Data comes from TradingView through [TradingView-API](https://github.com/Mathieu2301/TradingView-API).
-Charts are drawn with [Lightweight Charts](https://www.tradingview.com/lightweight-charts/).
+Track stocks, ETFs, and crypto with candlestick charts and news in your browser.
 
-![Watchlist grid with RSI below the AAPL candles and volume bars on the other tiles](docs/screenshot.png)
+![Watchlist grid with RSI under the AAPL chart](docs/screenshot.png)
 
-![Enlarged AAPL chart with the Indicators panel open, showing Volume, RSI, the grid indicator choice, and two moving averages](docs/screenshot-enlarged.png)
-
-Both screenshots use simulated prices from demo mode.
+Screenshots use simulated prices.
 
 ## Run it
 
-You need Node.js 20.19 or newer. Clone or download this repository and extract it if you downloaded a ZIP.
+Install Node.js 20.19 or newer. Clone this repository or download and extract its ZIP. [Download Node.js](https://nodejs.org/en/download)
 
-### macOS
+- **macOS.** If you use Homebrew, run `brew install node`. Open Terminal in the folder that contains `package.json`.
+- **Windows.** Run the Windows Installer (`.msi`) for a Node.js LTS release. Open the folder that contains `package.json` in File Explorer, type `cmd` in the address bar, and press Enter.
 
-Install Node.js with `brew install node` if you use Homebrew. Open Terminal in the project folder containing `package.json`.
-
-### Windows
-
-Choose an LTS release on the Node.js download page and run the Windows Installer (`.msi`). [Download Node.js](https://nodejs.org/en/download)
-
-Open the project folder containing `package.json` in File Explorer. Type `cmd` in the address bar and press Enter to open Command Prompt in that folder.
-
-### Start the app
-
-Check your Node.js version, install dependencies, then start the local server.
+Run these commands in the project folder.
 
 ```sh
 node -v
@@ -34,131 +21,62 @@ npm install
 npm start
 ```
 
-Keep the terminal open and visit [http://localhost:3000](http://localhost:3000) in your browser. Press Ctrl+C in the terminal to stop the server.
+Open [http://localhost:3000](http://localhost:3000) in your browser. Keep the terminal open while you use the app. Press Ctrl+C to stop it.
 
-After installing dependencies, you can run `npm run demo` instead of `npm start` to try the app offline with simulated prices.
+For an offline demo with simulated prices, use `npm run demo` after installing dependencies.
 
-The server hosts the page, fonts, and chart library locally. In live mode, it fetches market data and headlines from TradingView and supplements Taiwan listings with data from Yahoo股市.
+## Organize your watchlist
 
-After pulling new changes, run `npm install` again in case dependencies changed, then restart the server.
+- **Add symbols.** Search by ticker or company name. Press `/` to jump to search. You can also enter a full symbol such as `TWSE:0050`.
+- **Group symbols.** Click **+** to add a tab. Double-click a tab to rename it or right-click it to delete it. Drag a chart by its header onto another tab to move it.
+- **Arrange charts.** Drag chart headers to reorder them, or sort the current tab by ticker or daily percentage change. Click **×** on a chart to remove it.
 
-## Using the board
+## Explore charts
 
-- **Tabs**: the tabs under the top bar group your symbols. Click a tab to open it; the grid shows only that tab's symbols.
-  Click **+** after the last tab to add an empty one and type its name. Double-click a tab (or focus it and press F2) to rename it.
-  Right-click a tab to rename or delete it, or focus it and press Delete. Deleting a tab removes its symbols too, so it asks first unless the tab is empty. The last remaining tab can't be deleted.
-  To move a symbol to another tab, right-click its tile (or focus it and press Shift+F10) and pick the tab, or **New tab…** to start one. You can also drag a tile by its header onto a tab.
-  Boards from before tabs existed open with everything in a tab called "Default".
-- **Import and export**: the ⋮ button at the right end of the tabs row has **Export**, which downloads your tabs, symbols, candle interval, candle width, and per-symbol indicator settings as `watchlist-YYYY-MM-DD.json`, and **Import…**, which reads the file back.
-  Importing asks whether to **merge** the file into your board (your tabs stay; tabs with the same name are combined, symbols you already have stay where they are, and tabs that would end up empty are left out) or **replace** your tabs and symbols with the file's.
-  Either way, valid chart settings from the file are applied. Indicator settings apply to the symbols listed in the file. Older exports without indicator settings leave those preferences alone.
-  Symbols are matched ignoring case (a hand-edited `nasdaq:aapl` counts as `NASDAQ:AAPL`) and stored in TradingView's uppercase form. Handy as a backup, or to move your board to another browser or computer.
-  The file is plain JSON. `settings.indicators` is keyed by symbol. For example, `"NASDAQ:AAPL": { "volume": true, "rsi": true, "rsiColor": "#a78bfa", "gridIndicator": "rsi", "averages": [{ "type": "ema", "period": 20, "color": "#66c7ed" }] }`. A bare list of symbols also imports as a tab called "Imported".
-- **Add a symbol**: press `/` or click the search bar, type a ticker or company name (`AAPL`, `2330`, `bitcoin`), then pick a result with the arrow keys and Enter.
-  If you already know the full TradingView id, type it (for example `TWSE:0050`) and press Enter.
-  A symbol lives in one tab only. New symbols go into the open tab; if the symbol is already in a tab, that tab opens and its tile is pointed out instead (search results say which tab has it).
-- **News**: the News button left of the search bar swaps the charts for the latest headlines (last 24 hours) for every symbol on your board, across all tabs, newest first.
-  With more than one tab, the buttons above the symbol chips (All, then each tab with its headline count) show only the headlines for that tab's symbols and narrow the chips to them.
-  Click a symbol chip to show only its headlines (click it again to go back), and click a headline to open the full story in a new tab. The list refreshes every 5 minutes while open.
-  It opens instantly: the server keeps recent headlines ready (it starts fetching them a few seconds after the page loads) and shows them at once while it checks for newer ones.
-  Go back with the Charts button, Esc or your browser's back button. Headlines come from TradingView's public news feed. Taiwan-listed symbols (TWSE and TPEX) also get Traditional Chinese headlines from Yahoo股市; a story carried by both sources shows once.
-  If a symbol has nothing in the last 24 hours, its latest three stories from the past two weeks appear in an "Earlier headlines" section at the end, so quiet days don't leave it blank.
-- **Candle interval**: the 1H / 4H / 1D / 1W / 1M / 3M switch in the top bar sets what one candle represents on every tile chart, in every tab.
-  For example, on 1W each candle is one week, and on 3M each candle is one quarter.
-- **Candle width**: the slider next to the interval switch sets how wide candles are on every tile chart, in every tab, so they always match across tiles.
-  It steps from 1 px to 15 px per candle (default 5 px). Slide right for wider candles (fewer on screen) and left for narrower ones (more history). Double-click the slider to reset it.
-  Because trading hours differ, the same number of hourly or 4-hour candles covers a different stretch of calendar time for a Taiwan stock or a crypto pair than for a US stock.
-- **Sort**: the sort button left of the interval switch opens a menu for ordering the open tab:
-  - **Ticker A–Z / Z–A** (numbers sort naturally, so 0050 comes before 2330).
-  - **Day change: gainers first / losers first**, by the day change % shown on each tile. Symbols without a price yet go last.
-    This order follows prices as they move, gently: a couple of seconds after prices arrive, then at most once a minute, with tiles sliding to their new places.
-    Switching to a tab sorted this way puts it in order straight away, from the latest prices its tiles have (a tab not opened since the page loaded waits for its prices first).
-    It waits while your pointer is over the grid, a menu is open or you're dragging a tile, so nothing moves out from under a click.
-  Each tab keeps its own setting. New symbols, and symbols moved in from another tab, go into their sorted place. Moving a tile yourself switches the button to Unsorted, and new symbols then go at the end.
-- **Reorder**: drag a tile by its header. Or focus the ⋮⋮ handle (with Tab) and press ← / →.
-- **Remove**: hover a tile and click ×, or right-click it and pick Remove.
-- **Keyboard shortcuts** on the main screen: **← →** switch tabs (wrapping around), and **↑ ↓** scroll the open tab one row of tiles at a time, each row lining up just under the top bar.
-  Arrow keys keep their usual job in the search box, the candle-width slider, the interval switch, a tile's ⋮⋮ handle (reorder) and menus. `/` jumps to the search box.
-- **Inside a chart**: hover to read candle values. Click or tap the chart to open the enlarged view, or focus it and press Enter or Space.
-  The header shows the same live price, day-change amount, and day-change percentage as the grid tile.
-  The enlarged chart starts with the board's candle interval each time it opens. Use its selector to change the interval for that view only.
-  Open **Indicators** to toggle Volume and RSI (14), customize the RSI line color (purple by default), or add up to three moving averages. Each can be SMA or EMA and has its own period in candles and color.
-  When Volume and RSI are both enabled, use **Grid indicator** to choose which one appears on the tile. If only one is enabled, the tile shows that one. Volume is the default choice, and moving averages stay in the enlarged view.
-  Each chart calculates indicators from its own interval. The browser remembers each symbol's setup.
-  Scroll or pinch to zoom and drag to pan. The enlarged chart keeps its own zoom and position. Close it with ×, Esc or by clicking outside it.
-- The dot next to the exchange shows the session: green when the market is open, amber for pre-market or after hours, grey when it's closed.
-  A "15 min delay" tag means TradingView is sending delayed data for that symbol, and "End of day" means it only updates the symbol after the market closes (some indices without a TradingView login).
-- **Taiwan prices are live**: free TradingView data for TWSE and TPEX is 15 minutes late (and TAIEX as `INDEX:TAIEX` only updates at the end of the day), so the price and day change on Taiwan tiles, TAIEX included, come from Yahoo股市 instead, a few seconds behind the market (hover the price to see its source).
-  The charts are live too. On 1H and 4H charts, today's candles are built from Yahoo股市's minute-by-minute data (refreshed every minute, and again just after each hour so a new candle starts on time, with the live price keeping the newest candle current in between); earlier days come from TradingView.
-  On 1D, 1W, 1M and 3M charts the current candle follows the live price, including the first 15 minutes of the day, before TradingView's delayed data has a candle for it.
-  If Yahoo stops answering, the charts go back to TradingView's delayed candles.
-  If Yahoo stops answering, the tile goes back to TradingView's delayed price and shows the delay tag.
+The interval buttons and candle-width slider apply to the whole grid. Hover over a chart to read candle values.
 
-Your tabs (names, symbols, order and sort settings), the open tab, the candle interval and the candle width are saved in your browser.
-Only the open tab's symbols stream live data. Switching back to a tab within a minute is instant; after that its prices catch up within a second or two.
-If the page stays hidden (another browser tab or a minimised window) for 5 minutes, live data stops until you come back, and the charts catch up within a second or two.
+Click or tap a chart to enlarge it. Scroll or pinch to zoom, and drag to pan. The enlarged view starts with the grid’s interval and lets you change its interval and zoom independently. Press Esc to close it.
 
-## Real-time data (optional)
+In the enlarged view, open **Indicators** to turn Volume and RSI on or off and change the RSI color. Add up to three SMA or EMA lines, each with its own period and color.
 
-Without a login, TradingView sends delayed data for many exchanges and keeps intraday history short.
-To use your own TradingView account's data permissions:
+If both Volume and RSI are on, use **Grid indicator** to choose which one shows on the tile. The app remembers your choices for each symbol.
+
+![Enlarged AAPL chart with the Indicators panel open](docs/screenshot-enlarged.png)
+
+## Read the news
+
+Click **News** to see recent headlines for your watchlist. Filter by tab or symbol, then click a headline to open the story.
+
+## Back up or move your watchlist
+
+Your browser saves your tabs, symbols, and chart settings. Use **⋮ → Export** to download a JSON backup that includes your indicator settings.
+
+Use **⋮ → Import…** to open a backup. Choose **Merge with my tabs** to add missing symbols or **Replace my tabs** to use the tabs and symbols from the backup. Both options apply the chart settings in the file.
+
+## Market data
+
+TradingView provides chart data and headlines. The app also uses Yahoo股市 for live Taiwan prices and local headlines. Some symbols have delayed or end-of-day data. Look for the label on the chart tile. If the connection drops, the app reconnects automatically.
+
+### TradingView login (optional)
+
+Signing in lets the app use the market data available to your TradingView account.
 
 1. Copy `.env.example` to `.env`.
-2. Sign in at tradingview.com. In the browser dev tools, go to Application → Cookies and copy the `sessionid` and `sessionid_sign` values into `.env`.
-3. Restart with `npm start`.
+2. Sign in to TradingView. In your browser’s developer tools, open **Application → Cookies**.
+3. In `.env`, set `TV_SESSION` to the `sessionid` cookie and `TV_SIGNATURE` to `sessionid_sign`.
+4. Restart the app with `npm start`.
 
 Keep `.env` private. Anyone with those cookies can use your TradingView session.
 
-## When the connection drops
-
-If your network blips, Wi-Fi changes or your Mac sleeps, the board carries on by itself: the server notices within 30 seconds (straight away after sleep), reconnects to TradingView in the background, and the charts pick up where they left off.
-The server window shows one line when the connection is lost and one when it's back, for example:
-
-```
-[tradingview] connection lost (No data from the server for 30 s); reconnecting in the background
-[tradingview] reconnected after 12 s
-```
-
-During a longer outage it tries again with growing pauses (up to once a minute) and adds a "still offline" reminder at most every 5 minutes.
-Yahoo股市 and headline problems are also reported once, not per symbol, and a single failed Yahoo request isn't reported at all.
-
 ## Settings
 
-| Variable | Default | Purpose |
+| Setting | Default | What it does |
 | --- | --- | --- |
-| `PORT` | `3000` | Port for the local server |
-| `HOST` | `127.0.0.1` | Only your own machine can reach the server. Set it to `0.0.0.0` to open the board from other devices on your network. |
-| `TV_SESSION`, `TV_SIGNATURE` | (empty) | TradingView cookies for real-time data |
+| `PORT` | `3000` | Sets the local server port. |
+| `HOST` | `127.0.0.1` | Set it to `0.0.0.0` to reach the app from other devices on your network. |
 
-## How it's built
+## How it works
 
-```
-server.js            Express + WebSocket server. Shares one upstream stream per symbol/interval across tabs, keeps it
-                     warm for 60 s after the last tab leaves, and after a connection loss resumes streams a few at a time.
-                     Streams the enlarged chart's selected interval alongside the grid when they differ.
-                     Serves fonts and the chart library
-lib/tv-source.js     TradingView-API v4: searchMarkets, watchCandles, and one shared quote session, all on one connection
-lib/tv-connection.js That one connection: notices when it's lost (30 s of silence, or waking from sleep), reconnects with
-                     backoff, and logs one line each way
-lib/log.js           One log line per repeating problem per interval
-lib/news.js          Headlines per symbol: 24-hour window (older fallback for quiet symbols), duplicates merged, 5-minute cache (older results shown at once while newer ones load)
-lib/search-cache.js  Symbol searches: remembered for 10 minutes, identical simultaneous searches share one request
-lib/yahoo-tw-news.js Yahoo股市 (zh-TW) headlines for Taiwan listings (TWSE:2330 -> 2330.TW, TPEX:6488 -> 6488.TWO), read from each stock's news page
-lib/yahoo-tw-quotes.js Live Yahoo股市 prices for Taiwan listings: one shared poll every 5 s for all of them (every 60 s after the close)
-lib/yahoo-tw-intraday.js Today's 1H/4H candles for Taiwan listings from Yahoo股市 minute data: one shared poll every minute (every 5 min after the close), plus one fetch just after each 1H/4H candle boundary
-lib/demo-source.js   Simulated data and sample headlines for `npm run demo`
-public/index.html    Page layout
-public/styles.css    Dark theme
-public/app.js        The page's entry point: starts each part below, in order, then draws the board
-public/app/          The page, one file per part (ES modules, no build step):
-                       state.js (tabs, symbols, saved settings), theme.js, util.js, chart.js (candles and live updates),
-                       tile.js (a tile; its chart is only built near the screen), chart-viewer.js, indicators.js and indicator-settings.js (enlarged chart),
-                       board.js (grid, add/remove/move), tabs.js, sort.js, drag.js, menu.js (menus and dialogs),
-                       import-export.js, keys.js, timeframe.js, zoom.js, live.js (WebSocket, pause when hidden),
-                       search.js, chips.js, news.js
-public/timeframes.js Candle intervals, used by both the server and the browser
-public/symbols.js    The symbol id check (EXCHANGE:SYMBOL), used by both the server and the browser
-```
+The Node.js server (`server.js` and `lib/`) fetches data and serves the browser app in `public/`. The charts use Lightweight Charts. [Lightweight Charts](https://www.tradingview.com/lightweight-charts/)
 
-TradingView-API is an unofficial community library and is not affiliated with TradingView.
-It's fine for personal use; check TradingView's terms before doing anything more with it.
+The app connects to TradingView through an unofficial community library. [TradingView-API](https://github.com/Mathieu2301/TradingView-API)
