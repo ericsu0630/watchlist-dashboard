@@ -840,7 +840,12 @@ function parseImport(text) {
     }),
   }));
   if (!tabs.length) throw new Error('There are no tabs in this file.');
-  return { tabs, invalid, repeated, symbols: seen.size };
+  // Chart settings, when the file has them (exports do): used only if they're valid.
+  const st = data && !Array.isArray(data) && data.settings && typeof data.settings === 'object' ? data.settings : {};
+  const settings = {};
+  if (TIMEFRAMES.some((t) => t.id === st.candleInterval)) settings.tf = st.candleInterval;
+  if (typeof st.candleWidthPx === 'number' && Number.isFinite(st.candleWidthPx)) settings.zoom = clampZoom(st.candleWidthPx);
+  return { tabs, invalid, repeated, symbols: seen.size, settings };
 }
 
 async function importBoard(file) {
@@ -853,13 +858,19 @@ async function importBoard(file) {
     await choiceDialog({ title: 'Can’t import this file', body: `${file.name}: ${err.message} Nothing was changed.`, choices: [{ value: 'ok', label: 'OK' }] });
     return;
   }
-  const { tabs, invalid, repeated, symbols } = parsed;
+  const { tabs, invalid, repeated, symbols, settings } = parsed;
+  // The file's candle interval and width apply with either choice; mention only what would change.
+  const changes = [
+    settings.tf && settings.tf !== state.tf && `candle interval to ${TIMEFRAMES.find((t) => t.id === settings.tf).label}`,
+    settings.zoom != null && settings.zoom !== state.zoom && `candle width to ${settings.zoom} px`,
+  ].filter(Boolean);
   const mine = allSymbols().length;
   const skipped = [invalid && `${plural(invalid, 'entry', 'entries')} that ${invalid === 1 ? 'isn’t a symbol' : 'aren’t symbols'}`, repeated && `${plural(repeated, 'repeated symbol')}`].filter(Boolean);
   const choice = await choiceDialog({
     title: `Import ${plural(tabs.length, 'tab')} and ${plural(symbols, 'symbol')}?`,
     body: `From ${file.name}. Replace swaps your current ${plural(state.tabs.length, 'tab')} and ${plural(mine, 'symbol')} for these. `
       + 'Merge keeps yours and adds these: tabs with the same name are combined, symbols you already have stay where they are, and tabs that would end up empty are left out.'
+      + (changes.length ? ` Either way, it also sets the ${changes.join(' and ')}.` : '')
       + (skipped.length ? ` Skipped: ${skipped.join(' and ')}.` : ''),
     choices: [{ value: 'cancel', label: 'Cancel' }, { value: 'merge', label: 'Merge with my tabs' }, { value: 'replace', label: 'Replace my tabs', danger: true }],
   });
@@ -896,6 +907,8 @@ async function importBoard(file) {
   save();
   render();
   sendWatch();
+  if (settings.tf) setTimeframe(settings.tf); // both no-ops when unchanged
+  if (settings.zoom != null) setZoom(settings.zoom);
   warmNews();
   if (LIVE_SORTS.has(state.sort)) resortSoon();
   scrollTo(0, 0);
@@ -1191,6 +1204,16 @@ zoomInput.addEventListener('input', () => {
   for (const tile of tiles.values()) tile.fitRange();
 });
 zoomInput.addEventListener('change', save);
+// Sets the candle width from elsewhere (import): slider, label and every chart follow.
+function setZoom(px) {
+  const z = clampZoom(px);
+  if (z === state.zoom) return;
+  state.zoom = z;
+  zoomInput.value = z;
+  showZoom();
+  for (const tile of tiles.values()) tile.fitRange();
+  save();
+}
 zoomInput.addEventListener('dblclick', () => {
   zoomInput.value = ZOOM_DEFAULT;
   zoomInput.dispatchEvent(new Event('input'));

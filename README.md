@@ -33,6 +33,7 @@ After pulling new changes, run `npm install` again in case dependencies changed,
   Boards from before tabs existed open with everything in a tab called "Default".
 - **Import and export**: the ⋮ button at the right end of the tabs row has **Export**, which downloads your tabs and their symbols, plus the candle interval and candle width you have selected, as `watchlist-YYYY-MM-DD.json`, and **Import…**, which reads such a file back.
   Importing asks whether to **merge** the file into your board (your tabs stay; tabs with the same name are combined, symbols you already have stay where they are, and tabs that would end up empty are left out) or **replace** your tabs and symbols with the file's.
+  Either way, the file's candle interval and candle width are applied too (the dialog says when they'd change).
   Symbols are matched ignoring case (a hand-edited `nasdaq:aapl` counts as `NASDAQ:AAPL`) and stored in TradingView's uppercase form. Handy as a backup, or to move your board to another browser or computer.
   The file is plain JSON: `{ "settings": { "candleInterval": "1d", "candleWidthPx": 5 }, "tabs": [{ "name": "US", "sort": "asc", "symbols": ["NASDAQ:AAPL", …] }, …] }` (a bare list of symbols also imports, as a tab called "Imported").
 - **Add a symbol**: press `/` or click the search bar, type a ticker or company name (`AAPL`, `2330`, `bitcoin`), then pick a result with the arrow keys and Enter.
