@@ -164,7 +164,6 @@ class Tile {
     this.el.setAttribute('aria-label', `${ticker} on ${exch}`);
 
     this.ui.remove.addEventListener('click', () => removeSymbol(symbol));
-    this.ui.chart.addEventListener('dblclick', () => this.fitRange());
     this.ui.grip.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); moveSymbol(symbol, -1); }
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); moveSymbol(symbol, 1); }
@@ -195,9 +194,8 @@ class Tile {
         vertLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
         horzLine: { color: COLORS.cross, width: 1, style: LWC.LineStyle.Dashed, labelBackgroundColor: COLORS.label },
       },
-      // Leave the mouse wheel to the page so the grid scrolls; drag and pinch still pan/zoom.
-      handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-      handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
+      handleScroll: false,
+      handleScale: false,
     });
     this.candles = this.chart.addSeries(LWC.CandlestickSeries, {
       upColor: COLORS.up, downColor: COLORS.down, borderVisible: false,
