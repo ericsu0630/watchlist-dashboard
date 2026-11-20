@@ -793,10 +793,13 @@ $('#tab-add').addEventListener('click', () => {
   startRename(tab.id);
 });
 
-// Export: every tab with its name, sort setting and symbols (in board order) as a small JSON file.
+// Export: every tab with its name, sort setting and symbols (in board order), plus the candle interval
+// and width, as a small JSON file.
 function exportBoard() {
   const tabs = state.tabs.map((t) => ({ name: t.name, sort: t.sort, symbols: [...t.symbols] }));
-  const data = { app: 'watchlist-dashboard', version: 1, exportedAt: new Date().toISOString(), tabs };
+  // The board-wide chart settings too: candle interval (1h, 4h, 1d, 1w, 1mo, 3mo) and candle width in px.
+  const settings = { candleInterval: state.tf, candleWidthPx: state.zoom };
+  const data = { app: 'watchlist-dashboard', version: 1, exportedAt: new Date().toISOString(), settings, tabs };
   const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: 'application/json' });
   const d = new Date();
   const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
