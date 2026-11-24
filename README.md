@@ -37,7 +37,7 @@ The interval buttons and candle-width slider apply to the whole grid. Hover over
 
 Click or tap a chart to enlarge it. Scroll or pinch to zoom, and drag to pan. The enlarged view starts with the grid’s interval and lets you change its interval and zoom independently. Press Esc to close it.
 
-Open **Indicators** to show the settings over the chart. Turn Volume and RSI on or off, change the RSI color, or add up to three SMA or EMA lines with their own periods and colors.
+Open **Indicators** to show the settings over the chart. Turn Volume and RSI on or off, change the RSI color, or add up to three SMA or EMA lines with their own periods and colors. Click **OK** or click outside the panel to close it.
 
 Moving averages also appear on the grid chart using its candle interval. Indicator labels show only their values in both views.
 

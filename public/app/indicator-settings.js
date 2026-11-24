@@ -77,6 +77,7 @@ export function writeIndicatorSettings(symbol, settings) {
 export function setupIndicatorSettings(dialog) {
   const button = $('#chart-viewer-indicators', dialog);
   const panel = $('#chart-viewer-indicator-panel', dialog);
+  const ok = $('#chart-viewer-indicators-ok', panel);
   const volume = $('#chart-viewer-volume', panel);
   const rsi = $('#chart-viewer-rsi', panel);
   const rsiColor = $('#chart-viewer-rsi-color', panel);
@@ -216,6 +217,16 @@ export function setupIndicatorSettings(dialog) {
   }
 
   button.addEventListener('click', () => setOpen(panel.hidden));
+  ok.addEventListener('click', () => {
+    button.focus({ preventScroll: true });
+    setOpen(false);
+  });
+  dialog.addEventListener('pointerdown', ({ target }) => {
+    if (!panel.hidden && !panel.contains(target) && !button.contains(target) && !target.closest('.price-line-handle')) {
+      panel.querySelector(':focus')?.blur();
+      setOpen(false);
+    }
+  }, true);
   volume.addEventListener('change', () => {
     settings.volume = volume.checked;
     saveSettings();

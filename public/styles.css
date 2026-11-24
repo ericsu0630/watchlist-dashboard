@@ -328,6 +328,7 @@ button { font: inherit; color: inherit; }
 .indicator-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .indicator-panel .indicator-delete { padding: 0; }
 .indicator-panel > button { justify-self: start; }
+.indicator-panel > .indicator-ok { justify-self: end; min-width: 56px; margin-top: 4px; }
 .chart-viewer-titles { min-width: 0; }
 .chart-viewer-titles h2 { margin: 0; font: 700 24px/1.05 var(--num); letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chart-viewer-titles p { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--muted); }
