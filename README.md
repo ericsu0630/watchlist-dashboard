@@ -43,9 +43,11 @@ Moving averages also appear on the grid chart using its candle interval. Indicat
 
 If both Volume and RSI are on, use **Grid indicator** to choose which one shows on the tile. The app remembers your choices for each symbol.
 
+In **Indicators**, add up to five horizontal lines per symbol. Set each line’s price and color or delete it there. Click or tap a line on the enlarged chart to open its settings, or drag it to set a new price. The grid shows the saved lines.
+
 Taiwan stocks and ETFs show a **D** badge at the bottom of the chart under each ex-dividend date, on the grid and in the enlarged view. Click or tap a badge to see the ex-dividend date, amount, and payment date, with a dotted line at the ex-date. Tapping a badge on the grid opens the enlarged chart with it. Press Esc or click elsewhere on the chart to close it. Dividend data comes from Yahoo股市, so other markets don’t show dividends yet.
 
-![Indicators panel floating over the enlarged AAPL chart](docs/screenshot-enlarged.png)
+![Enlarged AAPL chart with three horizontal lines and the selected line’s settings highlighted](docs/screenshot-enlarged.png)
 
 ## Read the news
 

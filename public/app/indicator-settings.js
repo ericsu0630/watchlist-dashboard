@@ -4,6 +4,8 @@ import { AVERAGE_COLORS, COLORS } from './theme.js';
 
 const DEFAULT_PERIODS = [20, 50, 200];
 const MAX_AVERAGES = DEFAULT_PERIODS.length;
+const PRICE_LINE_COLORS = [...AVERAGE_COLORS, COLORS.up, COLORS.down];
+const MAX_PRICE_LINES = 5;
 const validPeriod = (period) => Number.isSafeInteger(period) && period >= 1;
 const validColor = (color) => typeof color === 'string' && /^#[\da-f]{6}$/i.test(color);
 const settingsKey = (symbol) => `pd.indicators.${symbol}`;
@@ -40,12 +42,30 @@ export function parseIndicatorSettings(raw) {
       settings.averages = averages;
     }
   }
+  if (Array.isArray(raw?.priceLines)) {
+    const priceLines = [];
+    for (const row of raw.priceLines) {
+      if (!Number.isFinite(row?.price)) {
+        continue;
+      }
+      priceLines.push({
+        price: row.price,
+        color: validColor(row.color) ? row.color.toLowerCase() : PRICE_LINE_COLORS[priceLines.length],
+      });
+      if (priceLines.length === MAX_PRICE_LINES) {
+        break;
+      }
+    }
+    if (priceLines.length || !raw.priceLines.length) {
+      settings.priceLines = priceLines;
+    }
+  }
   return settings;
 }
 
 export function readIndicatorSettings(symbol) {
   return {
-    volume: true, rsi: false, rsiColor: COLORS.rsi, gridIndicator: 'volume', averages: [],
+    volume: true, rsi: false, rsiColor: COLORS.rsi, gridIndicator: 'volume', averages: [], priceLines: [],
     ...parseIndicatorSettings(store.get(settingsKey(symbol), null)),
   };
 }
@@ -66,17 +86,91 @@ export function setupIndicatorSettings(dialog) {
   const template = $('#chart-viewer-average-template', panel);
   const count = $('#chart-viewer-average-count', panel);
   const add = $('#chart-viewer-add-average', panel);
-  let symbol, settings, renderChart;
+  const priceRows = $('#chart-viewer-price-lines', panel);
+  const priceTemplate = $('#chart-viewer-price-line-template', panel);
+  const priceCount = $('#chart-viewer-price-line-count', panel);
+  const addPriceLine = $('#chart-viewer-add-price-line', panel);
+  let symbol, settings, renderChart, nextPrice, selectedLine;
 
   function setOpen(open) {
     panel.hidden = !open;
     button.setAttribute('aria-expanded', String(open));
   }
 
-  function saveSettings() {
+  function applySettings() {
     gridChoice.hidden = !(settings.volume && settings.rsi);
-    renderChart(settings);
+    renderChart(settings, settings.priceLines.indexOf(selectedLine));
+  }
+
+  function saveSettings() {
+    applySettings();
     writeIndicatorSettings(symbol, settings);
+  }
+
+  function highlightPriceRow() {
+    for (const [i, row] of [...priceRows.children].entries()) {
+      row.classList.toggle('is-selected', settings.priceLines[i] === selectedLine);
+    }
+  }
+
+  function selectPriceLine(index, price) {
+    const line = settings?.priceLines[index];
+    if (!line || !renderChart) {
+      return;
+    }
+    selectedLine = line;
+    setOpen(true);
+    highlightPriceRow();
+    const row = priceRows.children[index];
+    if (Number.isFinite(price) && price !== line.price) {
+      line.price = price;
+      $('[data-price-line-price]', row).value = price;
+      saveSettings();
+    } else {
+      applySettings();
+    }
+    row.focus({ preventScroll: true });
+    row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  function renderPriceRows() {
+    priceRows.replaceChildren(...settings.priceLines.map((line, i) => {
+      const row = priceTemplate.content.firstElementChild.cloneNode(true);
+      const price = $('[data-price-line-price]', row);
+      const color = $('[data-price-line-color]', row);
+      const remove = $('[data-price-line-remove]', row);
+      row.setAttribute('aria-label', `Horizontal line ${i + 1}`);
+      price.value = line.price;
+      color.value = line.color;
+      price.setAttribute('aria-label', `Price for horizontal line ${i + 1}`);
+      color.setAttribute('aria-label', `Color for horizontal line ${i + 1}`);
+      remove.setAttribute('aria-label', `Delete horizontal line ${i + 1}`);
+      price.addEventListener('change', () => {
+        if (!Number.isFinite(price.valueAsNumber)) {
+          price.value = line.price;
+          return;
+        }
+        line.price = price.valueAsNumber;
+        saveSettings();
+      });
+      color.addEventListener('change', () => {
+        line.color = color.value;
+        saveSettings();
+      });
+      remove.addEventListener('click', () => {
+        settings.priceLines.splice(i, 1);
+        if (selectedLine === line) {
+          selectedLine = null;
+        }
+        renderPriceRows();
+        saveSettings();
+        addPriceLine.focus();
+      });
+      return row;
+    }));
+    highlightPriceRow();
+    priceCount.textContent = `${settings.priceLines.length} of ${MAX_PRICE_LINES}`;
+    addPriceLine.disabled = settings.priceLines.length >= MAX_PRICE_LINES;
   }
 
   function renderRows() {
@@ -150,11 +244,27 @@ export function setupIndicatorSettings(dialog) {
     $('[data-average-type]', rows.lastElementChild).focus();
   });
 
+  addPriceLine.addEventListener('click', () => {
+    const { priceLines } = settings;
+    if (priceLines.length >= MAX_PRICE_LINES) {
+      return;
+    }
+    const color = PRICE_LINE_COLORS.find((value) => !priceLines.some((line) => line.color === value));
+    selectedLine = { price: nextPrice(priceLines), color };
+    priceLines.push(selectedLine);
+    renderPriceRows();
+    saveSettings();
+    $('[data-price-line-price]', priceRows.lastElementChild).focus();
+  });
+
   return {
-    open(id, apply) {
+    selectPriceLine,
+    open(id, apply, suggestPrice) {
       symbol = id;
       settings = readIndicatorSettings(symbol);
       renderChart = apply;
+      nextPrice = suggestPrice;
+      selectedLine = null;
       volume.checked = settings.volume;
       rsi.checked = settings.rsi;
       rsiColor.value = settings.rsiColor;
@@ -162,11 +272,14 @@ export function setupIndicatorSettings(dialog) {
       gridChoice.hidden = !(settings.volume && settings.rsi);
       setOpen(false);
       renderRows();
-      renderChart(settings);
+      renderPriceRows();
+      applySettings();
     },
     close() {
       setOpen(false);
       renderChart = null;
+      nextPrice = null;
+      selectedLine = null;
     },
   };
 }

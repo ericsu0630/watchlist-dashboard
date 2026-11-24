@@ -131,6 +131,20 @@
             <button data-average-remove type="button">Remove</button>
           </div>
         </template>
+        <div class="indicator-averages-head">
+          <h3>Horizontal lines</h3>
+          <span id="chart-viewer-price-line-count" aria-live="polite"></span>
+        </div>
+        <div class="price-line-row price-line-labels" aria-hidden="true"><span>Price</span><span>Color</span></div>
+        <div class="indicator-averages" id="chart-viewer-price-lines"></div>
+        <button class="indicator-button" id="chart-viewer-add-price-line" type="button">Add horizontal line</button>
+        <template id="chart-viewer-price-line-template">
+          <div class="price-line-row" role="group" tabindex="-1">
+            <input data-price-line-price type="number" step="any">
+            <input class="indicator-color" data-price-line-color type="color">
+            <button data-price-line-remove type="button">Delete</button>
+          </div>
+        </template>
       </section>
     </div>
   </dialog>

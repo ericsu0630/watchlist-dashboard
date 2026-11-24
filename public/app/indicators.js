@@ -1,4 +1,5 @@
 import { COLORS } from './theme.js';
+import { createPriceLineLayer } from './price-lines.js';
 
 const RSI_PERIOD = 14;
 
@@ -39,9 +40,10 @@ function relativeStrengthIndex(candles) {
   return points;
 }
 
-export function createIndicatorRenderer(view, { compact = false } = {}) {
+export function createIndicatorRenderer(view, { compact = false, editPriceLine } = {}) {
   const { chart, candles, volume } = view;
   const { LineSeries, LineStyle } = window.LightweightCharts;
+  const renderPriceLines = createPriceLineLayer(view, editPriceLine);
   let averages = [];
   const lines = [];
   let rsi = null;
@@ -56,7 +58,8 @@ export function createIndicatorRenderer(view, { compact = false } = {}) {
   }
   candles.subscribeDataChanged(refresh);
 
-  return (settings) => {
+  return (settings, selectedPriceLine) => {
+    renderPriceLines(settings.priceLines, selectedPriceLine);
     if (volume.options().visible !== settings.volume) {
       volume.applyOptions({ visible: settings.volume });
       candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: settings.volume ? 0.24 : 0.08 } });

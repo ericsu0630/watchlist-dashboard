@@ -5,6 +5,7 @@ import { createIndicatorRenderer } from './indicators.js';
 import { createDividendLayer } from './dividend-layer.js';
 import { setupDividendPanel } from './dividend-panel.js';
 import { setupIndicatorSettings } from './indicator-settings.js';
+import { suggestPriceLinePrice } from './price-lines.js';
 import { syncTfButtons } from './timeframe.js';
 import { sendWatch } from './live.js';
 
@@ -74,10 +75,15 @@ export function openChartViewer(tile, { dividend = null } = {}) {
   chartViewer.dialog.showModal();
   chartViewer.series = Object.assign(new CandleSeries(), createChartView(chartViewer.host, true, chartViewer.tf));
   applyChartPriceFormat(chartViewer.series.candles, tile);
-  const renderIndicators = createIndicatorRenderer(chartViewer.series);
-  indicators.open(tile.symbol, (settings) => {
-    renderIndicators(settings);
+  const series = chartViewer.series;
+  const initialClose = tile.candleData.at(-1).close;
+  const renderIndicators = createIndicatorRenderer(series, { editPriceLine: indicators.selectPriceLine });
+  indicators.open(tile.symbol, (settings, selectedPriceLine) => {
+    renderIndicators(settings, selectedPriceLine);
     tile.setGridIndicators(settings);
+  }, (lines) => {
+    const lastClose = series.candleData.at(-1)?.close ?? tile.candleData.at(-1)?.close ?? initialClose;
+    return suggestPriceLinePrice(series, lines, lastClose);
   });
   chartViewer.dividendLayer = createDividendLayer(chartViewer.series, { interval: () => tfPreset(chartViewer.tf).interval });
   chartViewer.dividendLayer.setEvents(tile.dividends);

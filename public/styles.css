@@ -268,13 +268,13 @@ button { font: inherit; color: inherit; }
   display: flex; align-items: center; gap: 12px; flex: none;
   padding: 0 20px 10px; border-bottom: 1px solid var(--line);
 }
-.indicator-button, .indicator-color, .indicator-grid-choice select, .indicator-average :is(select, [type="number"], button) {
+.indicator-button, .indicator-color, .indicator-grid-choice select, :is(.indicator-average, .price-line-row) :is(select, [type="number"], button) {
   min-height: 36px; min-width: 0; padding: 0 8px;
   font: 600 14px/1 var(--num); color: var(--ink); background: var(--tile);
   border: 1px solid var(--line-strong); border-radius: 8px;
 }
-.indicator-button, .indicator-color, .indicator-grid-choice select, .indicator-average :is(select, button) { cursor: pointer; }
-.indicator-button[aria-expanded="true"], .indicator-button:hover:not(:disabled), .indicator-average button:hover { background: var(--active); }
+.indicator-button, .indicator-color, .indicator-grid-choice select, :is(.indicator-average, .price-line-row) :is(select, button) { cursor: pointer; }
+.indicator-button[aria-expanded="true"], .indicator-button:hover:not(:disabled), :is(.indicator-average, .price-line-row) button:hover { background: var(--active); }
 .indicator-button:disabled { color: var(--muted); cursor: default; }
 .indicator-panel {
   position: absolute; top: 12px; left: 12px; z-index: 1;
@@ -310,10 +310,19 @@ button { font: inherit; color: inherit; }
 .indicator-toggles input[type="checkbox"] { accent-color: var(--accent); }
 .indicator-averages-head { display: flex; align-items: center; gap: 8px; }
 .indicator-averages-head h3 { margin: 0; font: 600 15px/1 var(--num); }
-.indicator-averages-head span, .indicator-average-labels { color: var(--ink-2); font-size: 13px; }
+.indicator-averages-head span, .indicator-average-labels, .price-line-labels { color: var(--ink-2); font-size: 13px; }
 .indicator-averages { display: grid; gap: 6px; }
 .indicator-average { display: grid; grid-template-columns: minmax(54px, 86px) minmax(56px, 96px) 36px minmax(60px, max-content); align-items: center; gap: 6px; justify-content: start; }
-.indicator-averages:empty, .indicator-average-labels:has(+ .indicator-averages:empty) { display: none; }
+.indicator-averages:empty, :is(.indicator-average-labels, .price-line-labels):has(+ .indicator-averages:empty) { display: none; }
+.price-line-row { display: grid; grid-template-columns: minmax(72px, 122px) 36px auto; align-items: center; justify-content: start; gap: 6px; }
+.price-line-row.is-selected { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.editable-price-lines { position: relative; }
+.price-line-handles { position: absolute; z-index: 3; top: 0; left: 0; overflow: hidden; pointer-events: none; }
+.price-line-handle {
+  position: absolute; left: 0; width: 100%;
+  padding: 0; border: 0; background: transparent; pointer-events: auto; cursor: ns-resize; touch-action: none;
+}
+.price-line-handle:focus-visible { outline-offset: -2px; }
 .indicator-color { width: 36px; padding: 4px; }
 .indicator-panel > button { justify-self: start; }
 .chart-viewer-titles { min-width: 0; }
