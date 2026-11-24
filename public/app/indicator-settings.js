@@ -114,22 +114,22 @@ export function setupIndicatorSettings(dialog) {
     }
   }
 
-  function selectPriceLine(index, price) {
+  function editPriceLine(index, price) {
     const line = settings?.priceLines[index];
     if (!line || !renderChart) {
+      return;
+    }
+    const row = priceRows.children[index];
+    if (Number.isFinite(price)) {
+      line.price = price;
+      $('[data-price-line-price]', row).value = price;
+      saveSettings();
       return;
     }
     selectedLine = line;
     setOpen(true);
     highlightPriceRow();
-    const row = priceRows.children[index];
-    if (Number.isFinite(price) && price !== line.price) {
-      line.price = price;
-      $('[data-price-line-price]', row).value = price;
-      saveSettings();
-    } else {
-      applySettings();
-    }
+    applySettings();
     row.focus({ preventScroll: true });
     row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
@@ -269,7 +269,7 @@ export function setupIndicatorSettings(dialog) {
   });
 
   return {
-    selectPriceLine,
+    editPriceLine,
     open(id, apply, suggestPrice) {
       symbol = id;
       settings = readIndicatorSettings(symbol);

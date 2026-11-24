@@ -60,33 +60,35 @@ export function createPriceLineLayer({ chart, candles }, edit) {
     handle.className = 'price-line-handle';
     handle.hidden = true;
     overlay.append(handle);
+    let suppressClick = false;
 
     handle.addEventListener('pointerdown', (event) => {
       if (!event.isPrimary || event.button !== 0 || drag) {
         return;
       }
       event.preventDefault();
+      suppressClick = false;
       const y = candles.priceToCoordinate(row.price);
       if (y == null) {
         return;
       }
       const offset = event.clientY - overlay.getBoundingClientRect().top - y;
-      drag = { row, pointerId: event.pointerId, startY: event.clientY, offset, price: row.price };
+      drag = { row, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, offset, price: row.price };
       handle.setPointerCapture(event.pointerId);
     });
 
     handle.addEventListener('pointermove', (event) => {
       if (drag?.row !== row || drag.pointerId !== event.pointerId
-        || (!drag.moved && Math.abs(event.clientY - drag.startY) < 4)) {
+        || (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4)) {
         return;
       }
+      drag.moved = true;
       const height = candles.getPane().getHeight();
       const y = event.clientY - overlay.getBoundingClientRect().top - drag.offset;
       const price = candles.coordinateToPrice(Math.max(0, Math.min(y, height - 1)));
       if (price == null) {
         return;
       }
-      drag.moved = true;
       drag.price = snappedPrice(candles, price);
       row.line.applyOptions({ price: drag.price });
     });
@@ -97,6 +99,7 @@ export function createPriceLineLayer({ chart, candles }, edit) {
       }
       const { price, moved } = drag;
       drag = null;
+      suppressClick = moved;
       if (commit && moved) {
         edit(rows.indexOf(row), price);
       } else if (!commit) {
@@ -107,7 +110,11 @@ export function createPriceLineLayer({ chart, candles }, edit) {
     handle.addEventListener('pointerup', (event) => finish(event, true));
     handle.addEventListener('pointercancel', (event) => finish(event, false));
     handle.addEventListener('lostpointercapture', (event) => finish(event, false));
-    handle.addEventListener('click', () => edit(rows.indexOf(row)));
+    handle.addEventListener('click', ({ detail }) => {
+      if (!suppressClick || detail === 0) {
+        edit(rows.indexOf(row));
+      }
+    });
     return handle;
   }
 

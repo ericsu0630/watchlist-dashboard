@@ -77,7 +77,7 @@ export function openChartViewer(tile, { dividend = null } = {}) {
   applyChartPriceFormat(chartViewer.series.candles, tile);
   const series = chartViewer.series;
   const initialClose = tile.candleData.at(-1).close;
-  const renderIndicators = createIndicatorRenderer(series, { editPriceLine: indicators.selectPriceLine });
+  const renderIndicators = createIndicatorRenderer(series, { editPriceLine: indicators.editPriceLine });
   indicators.open(tile.symbol, (settings, selectedPriceLine) => {
     renderIndicators(settings, selectedPriceLine);
     tile.setGridIndicators(settings);
