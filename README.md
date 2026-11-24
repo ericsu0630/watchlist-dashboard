@@ -57,7 +57,7 @@ Use **⋮ → Import…** to open a backup. Choose **Merge with my tabs** to add
 
 ## Market data
 
-TradingView provides chart data and headlines. The app also uses Yahoo股市 for live Taiwan prices and local headlines. Some symbols have delayed or end-of-day data. Look for the label on the chart tile. If the connection drops, the app reconnects automatically.
+TradingView provides chart data and headlines. The app also uses Yahoo股市 for live Taiwan prices, local headlines and dividend history. Some symbols have delayed or end-of-day data. Look for the label on the chart tile. If the connection drops, the app reconnects automatically.
 
 ### TradingView login (optional)
 

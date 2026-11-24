@@ -17,6 +17,7 @@ import { createDemoSource } from './lib/demo-source.js';
 import { TIMEFRAMES, DEFAULT_TIMEFRAME } from './public/timeframes.js';
 import { createNewsService, NEWS_WINDOW_HOURS } from './lib/news.js';
 import { createSearchCache } from './lib/search-cache.js';
+import { warnEvery } from './lib/log.js';
 import { isSymbol } from './public/symbols.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -79,6 +80,31 @@ app.get('/api/search', async (req, res) => {
     console.error('[search]', err.code || '', err.message);
     res.status(502).json({ error: 'Search is unavailable right now. Check your internet connection.' });
   }
+});
+
+// Dividend history per symbol: /api/dividends?symbols=TWSE:0056,TPEX:6488
+// -> { dividends: { [symbol]: [{ exDate, cash, stock, payDate, stockPayDate, period }] }, failed: [symbol] }
+// Remembered for 12 hours; at most 4 lookups run at once; a symbol that fails is listed in `failed`.
+const dividendCache = createSearchCache(async (symbol) => (source.dividends ? source.dividends(symbol) : []), { ttlMs: 12 * 3600_000, maxEntries: 500 });
+const DIVIDEND_LOOKUPS_AT_ONCE = 4;
+app.get('/api/dividends', async (req, res) => {
+  const symbols = newsSymbols(req);
+  const dividends = {};
+  const failed = [];
+  const queue = [...symbols];
+  const worker = async () => {
+    while (queue.length) {
+      const symbol = queue.shift();
+      try {
+        dividends[symbol] = await dividendCache.get(symbol);
+      } catch (err) {
+        failed.push(symbol);
+        warnEvery('dividends', 10 * 60_000, `[dividends] dividend data unavailable (${err.code || ''} ${err.message}); charts show none for now`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: DIVIDEND_LOOKUPS_AT_ONCE }, worker));
+  res.json({ dividends, failed });
 });
 
 const server = createServer(app);
