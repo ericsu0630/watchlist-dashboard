@@ -254,6 +254,20 @@ button { font: inherit; color: inherit; }
 .confirm-actions .danger { color: #1a0d0f; background: var(--down); border-color: var(--down); }
 .confirm-actions .danger:hover { background: color-mix(in srgb, var(--down) 85%, white); }
 
+.account label { display: block; margin: 0 0 4px; color: var(--ink-2); font-size: 13px; }
+.account input {
+  display: block; width: 100%; height: 38px; margin: 0 0 12px; padding: 0 12px; border-radius: 8px;
+  color: var(--ink); background: var(--ground); border: 1px solid var(--line-strong); font: 400 14px/1 var(--ui);
+}
+.account input:focus { outline: none; border-color: var(--accent); }
+.account .account-message { min-height: 20px; margin: 0 0 12px; color: var(--down); font-size: 13px; }
+.account #account-hint { margin-bottom: 16px; }
+.confirm-actions .link { margin-right: auto; padding: 0; border: 0; background: none; color: var(--accent); font: 500 13px/1 var(--ui); letter-spacing: 0; }
+.confirm-actions .link:hover { background: none; text-decoration: underline; }
+.confirm-actions .primary { color: #0e0e0e; background: var(--ink); border-color: var(--ink); }
+.confirm-actions .primary:hover { background: #fff; }
+.confirm-actions .primary:disabled { opacity: .6; cursor: default; }
+
 .chart-viewer {
   width: min(1200px, calc(100vw - 32px)); height: min(760px, calc(100dvh - 32px)); max-width: none; max-height: none; padding: 0;
   color: var(--ink); background: var(--tile); border: 1px solid var(--line-strong); border-radius: 14px; overflow: hidden;

@@ -63,6 +63,17 @@ Your browser saves your tabs, symbols, and chart settings. Use **⋮ → Export*
 
 Use **⋮ → Import…** to open a backup. Choose **Merge with my tabs** to add missing symbols or **Replace my tabs** to use the tabs and symbols from the backup. Both options apply the chart settings in the file.
 
+## Sync with an account
+
+An account keeps the same board on every browser and device that uses this server. Signing in is optional; without it, the board stays in that browser.
+
+- Open **⋮ → Sign in to sync…**, then choose **Create an account**. Use a username of 3–32 letters, numbers, dots, dashes or underscores and a password of at least 8 characters.
+- Sign in on another browser. If it already has a board, you choose which one to keep.
+- After that, tabs, symbols, candle interval, candle width and indicator settings sync on their own. A change shows up in your other signed-in browsers within a few seconds. If two browsers change the board at the same moment, the last change wins.
+- **⋮ → Sign out** stops syncing and keeps the board on that device.
+
+Accounts live in `data/accounts.json` on the machine that runs the server. Passwords are stored as salted hashes. The file is not in git; back it up if you care about it. Sign-in is over plain HTTP unless you put the server behind HTTPS (for example `tailscale serve`), so use it on networks you trust. Signing in doesn't lock the dashboard; anyone who can reach the server can still open it.
+
 ## Market data
 
 TradingView provides chart data and headlines. The app also uses Yahoo股市 for live Taiwan prices, local headlines and dividend history. Some symbols have delayed or end-of-day data. Look for the label on the chart tile. If the connection drops, the app reconnects automatically.
@@ -84,6 +95,8 @@ Keep `.env` private. Anyone with those cookies can use your TradingView session.
 | --- | --- | --- |
 | `PORT` | `3000` | Sets the local server port. |
 | `HOST` | `127.0.0.1` | Set it to `0.0.0.0` to reach the app from other devices on your network. |
+| `PD_SIGNUP` | on | Set it to `off` to stop new accounts being created from the page. |
+| `PD_DATA_DIR` | `./data` | Where accounts and synced boards are stored. |
 
 ## How it works
 

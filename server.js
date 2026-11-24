@@ -19,6 +19,8 @@ import { createNewsService, NEWS_WINDOW_HOURS } from './lib/news.js';
 import { createSearchCache } from './lib/search-cache.js';
 import { warnEvery } from './lib/log.js';
 import { isSymbol } from './public/symbols.js';
+import { createAccounts } from './lib/accounts.js';
+import { accountRouter } from './lib/account-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotEnv(path.join(__dirname, '.env'));
@@ -50,6 +52,13 @@ for (const family of ['barlow-semi-condensed', 'inter-tight']) {
   app.use(`/fonts/${family}`, express.static(path.join(__dirname, `node_modules/@fontsource/${family}/files`), vendorCache));
 }
 app.get('/api/config', (_req, res) => res.json({ demo: DEMO }));
+// Accounts: a username and password lets the board sync between devices. Stored in ./data (or PD_DATA_DIR).
+// PD_SIGNUP=off stops new accounts being created from the page.
+const accounts = createAccounts({
+  dir: process.env.PD_DATA_DIR ? path.resolve(process.env.PD_DATA_DIR) : path.join(__dirname, 'data'),
+  signupOpen: !/^(off|0|false|no)$/i.test(process.env.PD_SIGNUP || ''),
+});
+app.use('/api/account', accountRouter(accounts));
 const news = createNewsService(source);
 const newsSymbols = (req) => [...new Set(String(req.query.symbols || '').split(',').map((s) => s.trim()).filter(isSymbol))].slice(0, 80);
 // Latest headlines (last 24 hours) for the given symbols: /api/news?symbols=NASDAQ:AAPL,TWSE:2330

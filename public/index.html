@@ -53,7 +53,7 @@
       <button class="tab-add" id="tab-add" type="button" aria-label="Add a tab" title="Add a tab">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
       </button>
-      <button class="tab-more" id="tab-more" type="button" aria-label="Import or export your tabs" title="Import or export your tabs" aria-haspopup="menu" aria-expanded="false">
+      <button class="tab-more" id="tab-more" type="button" aria-label="Account, import and export" title="Account, import and export" aria-haspopup="menu" aria-expanded="false">
         <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.25" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="8" cy="12.75" r="1.4"/></svg>
       </button>
       <input type="file" id="import-file" accept=".json,application/json" hidden>
@@ -67,6 +67,22 @@
       <h2 id="confirm-title"></h2>
       <p id="confirm-body"></p>
       <div class="confirm-actions" id="confirm-actions"></div>
+    </form>
+  </dialog>
+  <dialog class="confirm account" id="account-dialog" aria-labelledby="account-title">
+    <form id="account-form">
+      <h2 id="account-title">Sign in</h2>
+      <p id="account-hint"></p>
+      <label for="account-name">Username</label>
+      <input id="account-name" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required>
+      <label for="account-pass">Password</label>
+      <input id="account-pass" name="password" type="password" autocomplete="current-password" maxlength="200" required>
+      <p class="account-message" id="account-message" role="alert"></p>
+      <div class="confirm-actions">
+        <button type="button" id="account-switch" class="link"></button>
+        <button type="button" id="account-cancel">Cancel</button>
+        <button type="submit" id="account-submit" class="primary">Sign in</button>
+      </div>
     </form>
   </dialog>
   <dialog class="chart-viewer" id="chart-viewer" aria-labelledby="chart-viewer-title">

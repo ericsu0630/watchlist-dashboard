@@ -10,6 +10,7 @@ import { warmNews } from './news.js';
 import { sendWatch } from './live.js';
 import { setTimeframe } from './timeframe.js';
 import { setZoom } from './zoom.js';
+import { account, openAccountDialog, signOut, syncNow } from './account.js';
 
 // Export tabs, board-wide chart settings and each symbol's indicators.
 function exportBoard() {
@@ -161,7 +162,17 @@ export function setupImportExport() {
   const moreBtn = $('#tab-more');
   moreBtn.addEventListener('click', () => {
     if (!menu.hidden && menu.dataset.for === 'more') { closeMenu(); return; }
-    openMenu({}, moreBtn, 'Import or export your tabs', [
+    const statusText = { synced: 'Synced', syncing: 'Syncing…', offline: 'Offline' }[account.status];
+    const accountItems = account.user
+      ? [
+        { heading: `Signed in as ${account.user}` },
+        { label: 'Sync now', hint: statusText, action: syncNow },
+        { label: 'Sign out', action: signOut },
+      ]
+      : [{ label: 'Sign in to sync…', action: openAccountDialog }];
+    openMenu({}, moreBtn, 'Account, import and export', [
+      ...accountItems,
+      { separator: true },
       { label: 'Import…', hint: '.json', action: () => importInput.click() },
       { label: 'Export', hint: '.json', action: exportBoard },
     ], 'more');

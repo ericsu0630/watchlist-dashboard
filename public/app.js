@@ -13,6 +13,7 @@ import { connect, setupLive } from './app/live.js';
 import { setupSearch } from './app/search.js';
 import { setupChips } from './app/chips.js';
 import { openNews, setupNews } from './app/news.js';
+import { setupAccount } from './app/account.js';
 
 // Each part registers its own listeners here, in the order the page has always used.
 setupChartViewer();
@@ -29,6 +30,7 @@ setupLive();
 setupSearch();
 setupChips();
 setupNews();
+setupAccount(); // after the rest: it starts syncing, and may replace the board with the account's
 
 // ------------------------------------------------------------ Go
 if (new URLSearchParams(location.search).has('debug')) window.__watchlist = { tiles, state, chartViewer }; // for tests
