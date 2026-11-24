@@ -4,9 +4,9 @@ import { chartViewer, handleChartViewerMessage } from './chart-viewer.js';
 
 let ws = null;
 let wsRetry = 0;
-// After the tab has been hidden this long, nothing is watched until it's visible again.
+// After five minutes hidden, only the enlarged chart can keep streaming.
 const HIDDEN_PAUSE_MS = 5 * 60_000;
-let paused = false;
+let gridPaused = false;
 let pauseTimer = null;
 
 export function connect() {
@@ -21,9 +21,14 @@ export function sendWatch() {
   if (ws?.readyState !== WebSocket.OPEN) {
     return;
   }
-  const watch = { type: 'watch', symbols: paused ? [] : state.symbols, tf: state.tf };
-  if (!paused && chartViewer.dialog.open && chartViewer.tf !== state.tf) {
-    watch.viewer = { symbol: chartViewer.tile.symbol, tf: chartViewer.tf };
+  const { dialog, tile, tf } = chartViewer;
+  const viewer = dialog.open ? { symbol: tile.symbol, tf } : null;
+  const watch = { type: 'watch', symbols: state.symbols, tf: state.tf };
+  if (gridPaused) {
+    watch.symbols = viewer ? [viewer.symbol] : [];
+    watch.tf = viewer?.tf ?? state.tf;
+  } else if (viewer && viewer.tf !== state.tf) {
+    watch.viewer = viewer;
   }
   ws.send(JSON.stringify(watch));
 }
@@ -32,13 +37,13 @@ function onVisibilityChange() {
   pauseTimer = null;
   if (document.hidden) {
     pauseTimer = setTimeout(() => {
-      paused = true;
+      gridPaused = true;
       sendWatch();
     }, HIDDEN_PAUSE_MS);
     return;
   }
-  if (paused) {
-    paused = false;
+  if (gridPaused) {
+    gridPaused = false;
     sendWatch();
   }
 }

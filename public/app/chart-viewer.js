@@ -1,4 +1,4 @@
-import { $, setText, setAttr, splitSymbol } from './util.js';
+import { $, setText, setAttr, splitSymbol, decimalsFor, fmt } from './util.js';
 import { state, tfPreset, isIntraday } from './state.js';
 import { CandleSeries, createChartView, applyChartPriceFormat } from './chart.js';
 import { createIndicatorRenderer } from './indicators.js';
@@ -24,9 +24,17 @@ export function updateChartViewerHeader(tile) {
   }
   const [exchange, symbol] = splitSymbol(tile.symbol);
   const description = tile.info?.description || tile.quote.description || tile.ui.name.textContent;
+  const viewedClose = chartViewer.tf === state.tf ? null : chartViewer.series?.candleData.at(-1)?.close;
+  const price = tile.quote.lp == null && viewedClose != null
+    ? fmt(viewedClose, tile.decimals ?? decimalsFor(0, viewedClose))
+    : tile.ui.price.textContent;
   setText(chartViewer.title, symbol);
   setText(chartViewer.meta, [exchange, description].filter(Boolean).join(' · '));
-  setText(chartViewer.price, tile.ui.price.textContent);
+  setText(chartViewer.price, price);
+  const title = `${symbol} · ${price}`;
+  if (document.title !== title) {
+    document.title = title;
+  }
   setText(chartViewer.change, tile.ui.change.textContent);
   setAttr(chartViewer.change, 'class', tile.ui.change.className);
   setAttr(chartViewer.change, 'aria-label', tile.ui.change.getAttribute('aria-label') ?? '');
@@ -89,6 +97,7 @@ export function openChartViewer(tile, { dividend = null } = {}) {
   chartViewer.dividendLayer.setEvents(tile.dividends);
   dividendPanel.attach(chartViewer.series, chartViewer.dividendLayer);
   seedChartViewer();
+  sendWatch();
   chartViewer.close.focus();
   if (dividend) {
     dividendPanel.open(dividend);
@@ -145,6 +154,9 @@ export function handleChartViewerMessage(msg) {
       }
     }
     series.applyLive(tile.live, tfPreset(tf).interval);
+    if (tf !== state.tf && tile.quote.lp == null) {
+      updateChartViewerHeader(tile);
+    }
   } else if (msg.type === 'error') {
     series.replaceData();
     showChartViewerStatus(msg.message);
@@ -154,6 +166,7 @@ export function handleChartViewerMessage(msg) {
 }
 
 export function setupChartViewer() {
+  const defaultTitle = document.title;
   indicators = setupIndicatorSettings(chartViewer.dialog);
   dividendPanel = setupDividendPanel(chartViewer.dialog);
   chartViewer.close.addEventListener('click', () => closeChartViewer());
@@ -169,6 +182,7 @@ export function setupChartViewer() {
     chartViewer.series?.chart.remove();
     indicators.close();
     chartViewer.tile = chartViewer.tf = chartViewer.series = chartViewer.returnFocus = chartViewer.dividendLayer = null;
+    document.title = defaultTitle;
     sendWatch();
     if (returnFocus?.isConnected) {
       returnFocus.focus();
