@@ -27,7 +27,13 @@ For an offline demo with simulated prices, use `npm run demo` after installing d
 
 ### Start at login (macOS)
 
-Run `bash menubar/install.sh` once. It needs Xcode's command line tools. It builds a small menu bar app that starts the server whenever you log in. Click the chart icon in the menu bar to open the dashboard, restart the server, or quit (which also stops the server). Server output goes to `~/Library/Logs/watchlist-dashboard.log`. The server listens on all network interfaces, so other devices on your Tailscale network can open `http://<tailscale-ip>:3000` (find the IP with `tailscale ip -4`). The dashboard has no login, so it is also open to your local network. Run `HOST=127.0.0.1 bash menubar/install.sh` to keep it to this Mac only. Run `bash menubar/uninstall.sh` to remove it. Run the install script again if you move the folder or change your Node version.
+Run `bash menubar/install.sh` once. It needs Xcode's command line tools. It builds a small menu bar app that starts the server whenever you log in.
+
+- **Menu bar icon.** Click the chart icon to open the dashboard, restart the server, or quit. Quit also stops the server.
+- **Logs.** Server output goes to `~/Library/Logs/watchlist-dashboard.log`.
+- **Other devices.** The server listens on all network interfaces. Devices on your Tailscale network can open `http://<tailscale-ip>:3000`. Find the IP with `tailscale ip -4`.
+- **Local network.** The dashboard itself isn't locked, so anyone on your local network can open it too. [Accounts](#sync-with-an-account) only sync your board. Run `HOST=127.0.0.1 bash menubar/install.sh` to keep it to this Mac only.
+- **Update or remove.** Run the install script again if you move the folder or change your Node version. Run `bash menubar/uninstall.sh` to remove it.
 
 ## Organize your watchlist
 
@@ -59,7 +65,7 @@ Click **News** to see recent headlines for your watchlist. Filter by tab or symb
 
 ## Back up or move your watchlist
 
-Your browser saves your tabs, symbols, and chart settings. Use **⋮ → Export** to download a JSON backup that includes your indicator settings.
+Your browser saves your tabs, symbols, and chart settings. To keep them in step across browsers, [sync with an account](#sync-with-an-account). Use **⋮ → Export** to download a JSON backup that includes your indicator settings.
 
 Use **⋮ → Import…** to open a backup. Choose **Merge with my tabs** to add missing symbols or **Replace my tabs** to use the tabs and symbols from the backup. Both options apply the chart settings in the file.
 
@@ -103,3 +109,5 @@ Keep `.env` private. Anyone with those cookies can use your TradingView session.
 The Node.js server (`server.js` and `lib/`) fetches data and serves the browser app in `public/`. The charts use Lightweight Charts. [Lightweight Charts](https://www.tradingview.com/lightweight-charts/)
 
 The app connects to TradingView through an unofficial community library. [TradingView-API](https://github.com/Mathieu2301/TradingView-API)
+
+Accounts and sync are in `lib/accounts.js` and `lib/account-routes.js` on the server, and `public/app/account.js` in the page. The macOS menu bar app is in `menubar/`.
