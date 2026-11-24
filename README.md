@@ -25,6 +25,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. Keep the te
 
 For an offline demo with simulated prices, use `npm run demo` after installing dependencies.
 
+### Start at login (macOS)
+
+Run `bash menubar/install.sh` once. It needs Xcode's command line tools. It builds a small menu bar app that starts the server whenever you log in. Click the chart icon in the menu bar to open the dashboard, restart the server, or quit (which also stops the server). Server output goes to `~/Library/Logs/watchlist-dashboard.log`. The server listens on all network interfaces, so other devices on your Tailscale network can open `http://<tailscale-ip>:3000` (find the IP with `tailscale ip -4`). The dashboard has no login, so it is also open to your local network. Run `HOST=127.0.0.1 bash menubar/install.sh` to keep it to this Mac only. Run `bash menubar/uninstall.sh` to remove it. Run the install script again if you move the folder or change your Node version.
+
 ## Organize your watchlist
 
 - **Add symbols.** Search by ticker or company name. Press `/` to jump to search. You can also enter a full symbol such as `TWSE:0050`.
