@@ -186,7 +186,7 @@ export function setupIndicatorSettings(dialog) {
       type.setAttribute('aria-label', `Type for moving average ${i + 1}`);
       period.setAttribute('aria-label', `Period for moving average ${i + 1}`);
       color.setAttribute('aria-label', `Color for moving average ${i + 1}`);
-      remove.setAttribute('aria-label', `Remove moving average ${i + 1}`);
+      remove.setAttribute('aria-label', `Delete moving average ${i + 1}`);
       type.addEventListener('change', () => {
         average.type = type.value;
         saveSettings();

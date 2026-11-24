@@ -312,9 +312,9 @@ button { font: inherit; color: inherit; }
 .indicator-averages-head h3 { margin: 0; font: 600 15px/1 var(--num); }
 .indicator-averages-head span, .indicator-average-labels, .price-line-labels { color: var(--ink-2); font-size: 13px; }
 .indicator-averages { display: grid; gap: 6px; }
-.indicator-average { display: grid; grid-template-columns: minmax(54px, 86px) minmax(56px, 96px) 36px minmax(60px, max-content); align-items: center; gap: 6px; justify-content: start; }
+.indicator-average { display: grid; grid-template-columns: minmax(54px, 86px) minmax(56px, 96px) 36px 36px; align-items: center; gap: 6px; justify-content: start; }
 .indicator-averages:empty, :is(.indicator-average-labels, .price-line-labels):has(+ .indicator-averages:empty) { display: none; }
-.price-line-row { display: grid; grid-template-columns: minmax(72px, 122px) 36px auto; align-items: center; justify-content: start; gap: 6px; }
+.price-line-row { display: grid; grid-template-columns: minmax(72px, 122px) 36px 36px; align-items: center; justify-content: start; gap: 6px; }
 .price-line-row.is-selected { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .editable-price-lines { position: relative; }
 .price-line-handles { position: absolute; z-index: 3; top: 0; left: 0; overflow: hidden; pointer-events: none; }
@@ -324,6 +324,9 @@ button { font: inherit; color: inherit; }
 }
 .price-line-handle:focus-visible { outline-offset: -2px; }
 .indicator-color { width: 36px; padding: 4px; }
+.indicator-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.indicator-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.indicator-panel .indicator-delete { padding: 0; }
 .indicator-panel > button { justify-self: start; }
 .chart-viewer-titles { min-width: 0; }
 .chart-viewer-titles h2 { margin: 0; font: 700 24px/1.05 var(--num); letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
