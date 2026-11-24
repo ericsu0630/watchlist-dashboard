@@ -91,6 +91,13 @@
     <div class="chart-viewer-body">
       <div class="chart-viewer-chart" id="chart-viewer-chart"></div>
       <div class="state" id="chart-viewer-status" role="status" hidden></div>
+      <section class="dividend-panel" id="chart-viewer-dividend" aria-labelledby="chart-viewer-dividend-title" hidden>
+        <h3 id="chart-viewer-dividend-title"><span class="dividend-badge" aria-hidden="true">D</span>Dividends</h3>
+        <button class="dividend-close" id="chart-viewer-dividend-close" type="button" aria-label="Close dividends">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
+        </button>
+        <div class="dividend-list" id="chart-viewer-dividend-list"></div>
+      </section>
       <section class="indicator-panel" id="chart-viewer-indicator-panel" aria-label="Chart indicators" hidden>
         <div class="indicator-toggles">
           <label><input id="chart-viewer-volume" type="checkbox"> Volume</label>

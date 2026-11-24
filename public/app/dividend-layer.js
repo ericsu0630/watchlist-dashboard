@@ -190,13 +190,21 @@ export function createDividendLayer(view, { compact = false, interval }) {
     selected() {
       return selectedExDate;
     },
-    // The badge a chart click landed on, from the click's hovered object, or null.
+    // The badge a chart click landed on, or null. Touch taps carry no hovered object, so fall back to the point.
     clusterAt(param) {
       const id = param?.hoveredInfo?.objectId ?? param?.hoveredObjectId;
-      if (typeof id !== 'string' || !id.startsWith(ID_PREFIX)) {
+      if (typeof id === 'string' && id.startsWith(ID_PREFIX)) {
+        return clusters.find((c) => c.key === id) || null;
+      }
+      if (!param?.point || (param.paneIndex ?? 0) !== 0) {
         return null;
       }
-      return clusters.find((c) => c.key === id) || null;
+      return clusterAtPoint(param.point.x, param.point.y);
+    },
+    // The badge showing the dividend with this ex-date right now ({ key, x, y, radius, events }), or null.
+    clusterFor(exDate) {
+      const c = clusters.find((cluster) => cluster.events.some((e) => e.exDate === exDate));
+      return c ? { key: c.key, x: c.x, y: badgeY(), radius, events: c.events } : null;
     },
     // For tests: the badges as drawn.
     marks() {

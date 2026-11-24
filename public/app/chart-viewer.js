@@ -3,6 +3,7 @@ import { state, tfPreset, isIntraday } from './state.js';
 import { CandleSeries, createChartView, applyChartPriceFormat } from './chart.js';
 import { createIndicatorRenderer } from './indicators.js';
 import { createDividendLayer } from './dividend-layer.js';
+import { setupDividendPanel } from './dividend-panel.js';
 import { setupIndicatorSettings } from './indicator-settings.js';
 import { syncTfButtons } from './timeframe.js';
 import { sendWatch } from './live.js';
@@ -14,6 +15,7 @@ export const chartViewer = {
   tile: null, tf: null, series: null, returnFocus: null, dividendLayer: null,
 };
 let indicators;
+let dividendPanel;
 
 export function updateChartViewerHeader(tile) {
   if (chartViewer.tile !== tile) {
@@ -59,7 +61,8 @@ function seedChartViewer() {
   }
 }
 
-export function openChartViewer(tile) {
+// `dividend`: an ex-date whose dividend panel opens with the chart (a tap on a tile's D badge).
+export function openChartViewer(tile, { dividend = null } = {}) {
   if (!tile.candleData.length || chartViewer.dialog.open) {
     return;
   }
@@ -78,8 +81,12 @@ export function openChartViewer(tile) {
   });
   chartViewer.dividendLayer = createDividendLayer(chartViewer.series, { interval: () => tfPreset(chartViewer.tf).interval });
   chartViewer.dividendLayer.setEvents(tile.dividends);
+  dividendPanel.attach(chartViewer.series, chartViewer.dividendLayer);
   seedChartViewer();
   chartViewer.close.focus();
+  if (dividend) {
+    dividendPanel.open(dividend);
+  }
 }
 
 // New dividend data for a tile that's open in the enlarged chart.
@@ -142,6 +149,7 @@ export function handleChartViewerMessage(msg) {
 
 export function setupChartViewer() {
   indicators = setupIndicatorSettings(chartViewer.dialog);
+  dividendPanel = setupDividendPanel(chartViewer.dialog);
   chartViewer.close.addEventListener('click', () => closeChartViewer());
   chartViewer.dialog.addEventListener('pointerdown', (e) => {
     if (e.target === chartViewer.dialog) {
@@ -150,6 +158,7 @@ export function setupChartViewer() {
   });
   chartViewer.dialog.addEventListener('close', () => {
     const returnFocus = chartViewer.returnFocus;
+    dividendPanel.detach();
     chartViewer.dividendLayer?.detach();
     chartViewer.series?.chart.remove();
     indicators.close();
