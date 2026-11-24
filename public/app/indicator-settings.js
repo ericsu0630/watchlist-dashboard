@@ -4,7 +4,6 @@ import { AVERAGE_COLORS, COLORS } from './theme.js';
 
 const DEFAULT_PERIODS = [20, 50, 200];
 const MAX_AVERAGES = DEFAULT_PERIODS.length;
-const PRICE_LINE_COLORS = [...AVERAGE_COLORS, COLORS.up, COLORS.down];
 const MAX_PRICE_LINES = 5;
 const validPeriod = (period) => Number.isSafeInteger(period) && period >= 1;
 const validColor = (color) => typeof color === 'string' && /^#[\da-f]{6}$/i.test(color);
@@ -50,7 +49,7 @@ export function parseIndicatorSettings(raw) {
       }
       priceLines.push({
         price: row.price,
-        color: validColor(row.color) ? row.color.toLowerCase() : PRICE_LINE_COLORS[priceLines.length],
+        color: validColor(row.color) ? row.color.toLowerCase() : COLORS.priceLine,
       });
       if (priceLines.length === MAX_PRICE_LINES) {
         break;
@@ -260,8 +259,7 @@ export function setupIndicatorSettings(dialog) {
     if (priceLines.length >= MAX_PRICE_LINES) {
       return;
     }
-    const color = PRICE_LINE_COLORS.find((value) => !priceLines.some((line) => line.color === value));
-    selectedLine = { price: nextPrice(priceLines), color };
+    selectedLine = { price: nextPrice(priceLines), color: COLORS.priceLine };
     priceLines.push(selectedLine);
     renderPriceRows();
     saveSettings();
