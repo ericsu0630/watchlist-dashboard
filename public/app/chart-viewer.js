@@ -2,6 +2,7 @@ import { $, setText, setAttr, splitSymbol } from './util.js';
 import { state, tfPreset, isIntraday } from './state.js';
 import { CandleSeries, createChartView, applyChartPriceFormat } from './chart.js';
 import { createIndicatorRenderer } from './indicators.js';
+import { createDividendLayer } from './dividend-layer.js';
 import { setupIndicatorSettings } from './indicator-settings.js';
 import { syncTfButtons } from './timeframe.js';
 import { sendWatch } from './live.js';
@@ -10,7 +11,7 @@ export const chartViewer = {
   dialog: $('#chart-viewer'), host: $('#chart-viewer-chart'), title: $('#chart-viewer-title'), meta: $('#chart-viewer-meta'), close: $('#chart-viewer-close'),
   price: $('#chart-viewer-price'), change: $('#chart-viewer-change'),
   intervals: $('#chart-viewer-tf'), status: $('#chart-viewer-status'),
-  tile: null, tf: null, series: null, returnFocus: null,
+  tile: null, tf: null, series: null, returnFocus: null, dividendLayer: null,
 };
 let indicators;
 
@@ -75,8 +76,17 @@ export function openChartViewer(tile) {
     renderIndicators(settings);
     tile.setGridIndicators(settings);
   });
+  chartViewer.dividendLayer = createDividendLayer(chartViewer.series, { interval: () => tfPreset(chartViewer.tf).interval });
+  chartViewer.dividendLayer.setEvents(tile.dividends);
   seedChartViewer();
   chartViewer.close.focus();
+}
+
+// New dividend data for a tile that's open in the enlarged chart.
+export function updateChartViewerDividends(tile) {
+  if (chartViewer.tile === tile && chartViewer.dividendLayer) {
+    chartViewer.dividendLayer.setEvents(tile.dividends);
+  }
 }
 
 export function setChartViewerTimeframe(id) {
@@ -140,9 +150,10 @@ export function setupChartViewer() {
   });
   chartViewer.dialog.addEventListener('close', () => {
     const returnFocus = chartViewer.returnFocus;
+    chartViewer.dividendLayer?.detach();
     chartViewer.series?.chart.remove();
     indicators.close();
-    chartViewer.tile = chartViewer.tf = chartViewer.series = chartViewer.returnFocus = null;
+    chartViewer.tile = chartViewer.tf = chartViewer.series = chartViewer.returnFocus = chartViewer.dividendLayer = null;
     sendWatch();
     if (returnFocus?.isConnected) {
       returnFocus.focus();

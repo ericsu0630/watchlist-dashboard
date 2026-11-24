@@ -1,7 +1,7 @@
 import { state, tiles } from './app/state.js';
 import { CHART_FONT } from './app/theme.js';
 import { render, setupBoard } from './app/board.js';
-import { setupChartViewer } from './app/chart-viewer.js';
+import { chartViewer, setupChartViewer } from './app/chart-viewer.js';
 import { setupSort } from './app/sort.js';
 import { setupTabs, setupTabDrop } from './app/tabs.js';
 import { setupImportExport } from './app/import-export.js';
@@ -31,7 +31,7 @@ setupChips();
 setupNews();
 
 // ------------------------------------------------------------ Go
-if (new URLSearchParams(location.search).has('debug')) window.__watchlist = { tiles, state }; // for tests
+if (new URLSearchParams(location.search).has('debug')) window.__watchlist = { tiles, state, chartViewer }; // for tests
 render();
 if (location.hash === '#news') openNews({ push: false });
 connect();

@@ -2,7 +2,9 @@ import { $, setText, setAttr, splitSymbol, decimalsFor, fmt, reducedMotion } fro
 import { COLORS } from './theme.js';
 import { state, tfPreset, isIntraday } from './state.js';
 import { CandleSeries, createChartView, applyChartPriceFormat } from './chart.js';
-import { chartViewer, updateChartViewerHeader, openChartViewer, closeChartViewer } from './chart-viewer.js';
+import { chartViewer, updateChartViewerHeader, openChartViewer, closeChartViewer, updateChartViewerDividends } from './chart-viewer.js';
+import { createDividendLayer } from './dividend-layer.js';
+import { dividendsFor, requestDividends } from './dividends.js';
 import { readIndicatorSettings } from './indicator-settings.js';
 import { createIndicatorRenderer } from './indicators.js';
 import { removeSymbol, moveSymbol } from './board.js';
@@ -28,6 +30,7 @@ export class Tile extends CandleSeries {
     this.quote = {};
     this.live = null; // live quote with today's open/high/low, when the price comes from a live source
     this.view = null; // { pos, spacing } saved when the chart is taken down, so it comes back where it was
+    this.dividends = dividendsFor(symbol); // [{ exDate, cash, stock, payDate, … }], Taiwan listings only
     // Look up the tile's elements once.
     const q = (sel) => $(sel, this.el);
     this.ui = {
@@ -78,6 +81,9 @@ export class Tile extends CandleSeries {
     this.volume = view.volume;
     this.renderGridIndicators = createIndicatorRenderer(this, { compact: true });
     this.setGridIndicators(readIndicatorSettings(this.symbol));
+    this.dividendLayer = createDividendLayer(this, { compact: true, interval: () => tfPreset().interval });
+    this.dividendLayer.setEvents(this.dividends);
+    requestDividends(this.symbol);
     if (this.decimals != null) this.applyPriceFormat();
     if (this.candleData.length) {
       this.candles.setData(this.candleData);
@@ -87,6 +93,12 @@ export class Tile extends CandleSeries {
         this.chart.timeScale().scrollToPosition(this.view.pos, false);
       } else this.fitRange();
     }
+  }
+
+  setDividends(events) {
+    this.dividends = events;
+    this.dividendLayer?.setEvents(events);
+    updateChartViewerDividends(this);
   }
 
   setGridIndicators({ volume, rsi, rsiColor, gridIndicator, averages }) {
@@ -99,6 +111,8 @@ export class Tile extends CandleSeries {
     if (!this.chart) return;
     const ts = this.chart.timeScale();
     this.view = { pos: ts.scrollPosition(), spacing: ts.options().barSpacing };
+    this.dividendLayer.detach();
+    this.dividendLayer = null;
     this.chart.remove();
     this.renderGridIndicators = null;
     this.chart = this.candles = this.volume = null;

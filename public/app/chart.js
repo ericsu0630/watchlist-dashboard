@@ -4,7 +4,9 @@ import { state, isIntraday } from './state.js';
 const LWC = window.LightweightCharts;
 
 // Lightweight Charts renders timestamps as UTC; shift them so axis labels read in local time.
-const toLocal = (t) => t - new Date(t * 1000).getTimezoneOffset() * 60;
+export const toLocal = (t) => t - new Date(t * 1000).getTimezoneOffset() * 60;
+// The reverse of toLocal (exact except within the hour a daylight-saving change skips or repeats).
+export const fromLocal = (t) => t + new Date(t * 1000).getTimezoneOffset() * 60;
 const toCandle = (b) => ({ time: toLocal(b.time), open: b.open, high: b.high, low: b.low, close: b.close });
 const toVolume = (b) => ({ time: toLocal(b.time), value: b.volume, color: b.close >= b.open ? COLORS.volUp : COLORS.volDown });
 
@@ -17,7 +19,7 @@ const TPE = 8 * 3600;
 // candles start at 09:00 Taipei: 1H on the hour, 4H at 09:00 and 13:00.
 const LIVE_INTERVALS = new Set(['60', '240', 'D', 'W', 'M', '3M']);
 const INTRADAY = new Set(['60', '240']);
-function periodIndex(t, interval) {
+export function periodIndex(t, interval) {
   const day = Math.floor((t + TPE) / 86400);
   if (interval === '60') return Math.floor((t + TPE - 9 * 3600) / 3600);
   if (interval === '240') return day * 2 + ((t + TPE) % 86400 >= 13 * 3600 ? 1 : 0);
