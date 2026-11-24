@@ -36,6 +36,7 @@ export class Tile extends CandleSeries {
     this.ui = {
       ticker: q('.ticker'), exch: q('.exch'), name: q('.name'), price: q('.price'), change: q('.change'),
       session: q('.session'), delay: q('.delay'), state: q('.state span'), chart: q('.chart'), grip: q('.grip'), remove: q('.remove'),
+      dividendTip: q('.dividend-tip'),
     };
 
     const [exch, ticker] = splitSymbol(symbol);
@@ -84,6 +85,7 @@ export class Tile extends CandleSeries {
     this.setGridIndicators(readIndicatorSettings(this.symbol));
     this.dividendLayer = createDividendLayer(this, { compact: true, interval: () => tfPreset().interval });
     this.dividendLayer.setEvents(this.dividends);
+    this.chart.subscribeCrosshairMove((param) => this.showDividendTip(param));
     requestDividends(this.symbol);
     if (this.decimals != null) this.applyPriceFormat();
     if (this.candleData.length) {
@@ -102,6 +104,32 @@ export class Tile extends CandleSeries {
     updateChartViewerDividends(this);
   }
 
+  // Hovering a D badge shows its ex-dividend date and amount (one line per dividend when badges merged).
+  showDividendTip(param) {
+    const tip = this.ui.dividendTip;
+    const hit = this.dividendLayer?.clusterAt(param);
+    const badge = hit && this.dividendLayer.clusterFor(hit.events[0].exDate);
+    if (!badge) {
+      tip.hidden = true;
+      return;
+    }
+    if (!tip.hidden && tip.dataset.key === badge.key) {
+      return; // still on the same badge
+    }
+    tip.dataset.key = badge.key;
+    tip.replaceChildren(...[...badge.events].reverse().map((e) => {
+      const line = document.createElement('div');
+      const amount = e.cash != null ? `${e.cash} TWD` : `${e.stock} TWD in shares`;
+      line.textContent = `${e.exDate}  ${amount}`;
+      return line;
+    }));
+    tip.hidden = false;
+    const wrap = tip.parentElement;
+    const left = Math.max(4, Math.min(badge.x - tip.offsetWidth / 2, wrap.clientWidth - tip.offsetWidth - 4));
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(Math.max(0, badge.y - badge.radius - 6 - tip.offsetHeight))}px`;
+  }
+
   setGridIndicators({ volume, rsi, rsiColor, gridIndicator, averages, priceLines }) {
     const showRsi = rsi && (!volume || gridIndicator === 'rsi');
     this.renderGridIndicators?.({ volume: volume && !showRsi, rsi: showRsi, rsiColor, averages, priceLines });
@@ -114,6 +142,7 @@ export class Tile extends CandleSeries {
     this.view = { pos: ts.scrollPosition(), spacing: ts.options().barSpacing };
     this.dividendLayer.detach();
     this.dividendLayer = null;
+    this.ui.dividendTip.hidden = true;
     this.chart.remove();
     this.renderGridIndicators = null;
     this.chart = this.candles = this.volume = null;

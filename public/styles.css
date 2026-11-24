@@ -429,6 +429,13 @@ main { padding: 10px 10px 32px; }
   font-size: 11px; color: var(--muted); padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--tile);
 }
 
+.dividend-tip {
+  position: absolute; z-index: 3; padding: 4px 8px; pointer-events: none; white-space: pre;
+  font: 500 12px/1.35 var(--num); color: var(--ink);
+  background: var(--surface-raised); border: 1px solid var(--line-strong); border-left: 2px solid var(--dividend); border-radius: 6px;
+  box-shadow: 0 6px 16px #0007;
+}
+
 /* ---------- Empty state ---------- */
 .empty { max-width: 560px; margin: 12vh auto 0; text-align: center; }
 
