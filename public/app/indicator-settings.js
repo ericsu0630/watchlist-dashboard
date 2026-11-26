@@ -32,6 +32,7 @@ export function parseIndicatorSettings(raw) {
       averages.push({
         type: row.type, period: row.period,
         color: validColor(row.color) ? row.color.toLowerCase() : AVERAGE_COLORS[averages.length],
+        showOnGrid: row.showOnGrid !== false,
       });
       if (averages.length === MAX_AVERAGES) {
         break;
@@ -179,13 +180,16 @@ export function setupIndicatorSettings(dialog) {
       const type = $('[data-average-type]', row);
       const period = $('[data-average-period]', row);
       const color = $('[data-average-color]', row);
+      const grid = $('[data-average-grid]', row);
       const remove = $('[data-average-remove]', row);
       type.value = average.type;
       period.value = average.period;
       color.value = average.color;
+      grid.checked = average.showOnGrid;
       type.setAttribute('aria-label', `Type for moving average ${i + 1}`);
       period.setAttribute('aria-label', `Period for moving average ${i + 1}`);
       color.setAttribute('aria-label', `Color for moving average ${i + 1}`);
+      grid.setAttribute('aria-label', `Show moving average ${i + 1} on grid`);
       remove.setAttribute('aria-label', `Delete moving average ${i + 1}`);
       type.addEventListener('change', () => {
         average.type = type.value;
@@ -201,6 +205,10 @@ export function setupIndicatorSettings(dialog) {
       });
       color.addEventListener('change', () => {
         average.color = color.value;
+        saveSettings();
+      });
+      grid.addEventListener('change', () => {
+        average.showOnGrid = grid.checked;
         saveSettings();
       });
       remove.addEventListener('click', () => {
@@ -248,12 +256,11 @@ export function setupIndicatorSettings(dialog) {
     }
     const period = DEFAULT_PERIODS.find((value) => !settings.averages.some((average) => average.period === value));
     const color = AVERAGE_COLORS.find((value) => !settings.averages.some((average) => average.color === value));
-    settings.averages.push({ type: 'sma', period, color });
+    settings.averages.push({ type: 'sma', period, color, showOnGrid: true });
     renderRows();
     saveSettings();
     $('[data-average-type]', rows.lastElementChild).focus();
   });
-
   addPriceLine.addEventListener('click', () => {
     const { priceLines } = settings;
     if (priceLines.length >= MAX_PRICE_LINES) {
@@ -278,7 +285,6 @@ export function setupIndicatorSettings(dialog) {
       rsi.checked = settings.rsi;
       rsiColor.value = settings.rsiColor;
       gridIndicator.value = settings.gridIndicator;
-      gridChoice.hidden = !(settings.volume && settings.rsi);
       setOpen(false);
       renderRows();
       renderPriceRows();
@@ -286,9 +292,7 @@ export function setupIndicatorSettings(dialog) {
     },
     close() {
       setOpen(false);
-      renderChart = null;
-      nextPrice = null;
-      selectedLine = null;
+      renderChart = nextPrice = selectedLine = null;
     },
   };
 }

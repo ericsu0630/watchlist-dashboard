@@ -132,7 +132,10 @@ export class Tile extends CandleSeries {
 
   setGridIndicators({ volume, rsi, rsiColor, gridIndicator, averages, priceLines }) {
     const showRsi = rsi && (!volume || gridIndicator === 'rsi');
-    this.renderGridIndicators?.({ volume: volume && !showRsi, rsi: showRsi, rsiColor, averages, priceLines });
+    this.renderGridIndicators?.({
+      volume: volume && !showRsi, rsi: showRsi, rsiColor, priceLines,
+      averages: averages.filter((average) => average.showOnGrid !== false),
+    });
   }
 
   // Free the chart's canvases while the tile is far off screen; remember where it was scrolled to.
