@@ -147,7 +147,7 @@
             </select>
             <input data-average-period type="number" min="1" step="1">
             <input class="indicator-color" data-average-color type="color">
-            <label class="indicator-average-grid"><input data-average-grid type="checkbox"></label>
+            <label class="indicator-grid-checkbox"><input data-average-grid type="checkbox"></label>
             <button class="indicator-action indicator-delete" data-average-remove type="button" title="Delete moving average">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5m4-5v5"/></svg>
             </button>
@@ -157,7 +157,7 @@
           <h3>Horizontal lines</h3>
           <span id="chart-viewer-price-line-count" aria-live="polite"></span>
         </div>
-        <div class="price-line-row price-line-labels" aria-hidden="true"><span>Price</span><span>Color</span></div>
+        <div class="price-line-row price-line-labels" aria-hidden="true"><span>Price</span><span>Color</span><span>Grid</span></div>
         <div class="indicator-averages" id="chart-viewer-price-lines"></div>
         <button class="indicator-button indicator-action" id="chart-viewer-add-price-line" type="button" aria-label="Add horizontal line">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -167,6 +167,7 @@
           <div class="price-line-row" role="group" tabindex="-1">
             <input data-price-line-price type="number" step="any">
             <input class="indicator-color" data-price-line-color type="color">
+            <label class="indicator-grid-checkbox"><input data-price-line-grid type="checkbox"></label>
             <button class="indicator-action indicator-delete" data-price-line-remove type="button" title="Delete horizontal line">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5m4-5v5"/></svg>
             </button>

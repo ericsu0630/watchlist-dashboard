@@ -51,6 +51,7 @@ export function parseIndicatorSettings(raw) {
       priceLines.push({
         price: row.price,
         color: validColor(row.color) ? row.color.toLowerCase() : COLORS.priceLine,
+        showOnGrid: row.showOnGrid !== false,
       });
       if (priceLines.length === MAX_PRICE_LINES) {
         break;
@@ -139,23 +140,22 @@ export function setupIndicatorSettings(dialog) {
       const row = priceTemplate.content.firstElementChild.cloneNode(true);
       const price = $('[data-price-line-price]', row);
       const color = $('[data-price-line-color]', row);
+      const grid = $('[data-price-line-grid]', row);
       const remove = $('[data-price-line-remove]', row);
       row.setAttribute('aria-label', `Horizontal line ${i + 1}`);
       price.value = line.price;
       color.value = line.color;
+      grid.checked = line.showOnGrid;
       price.setAttribute('aria-label', `Price for horizontal line ${i + 1}`);
       color.setAttribute('aria-label', `Color for horizontal line ${i + 1}`);
+      grid.setAttribute('aria-label', `Show horizontal line ${i + 1} on grid`);
       remove.setAttribute('aria-label', `Delete horizontal line ${i + 1}`);
-      price.addEventListener('change', () => {
-        if (!Number.isFinite(price.valueAsNumber)) {
+      row.addEventListener('change', ({ target }) => {
+        if (target === price && !Number.isFinite(price.valueAsNumber)) {
           price.value = line.price;
           return;
         }
-        line.price = price.valueAsNumber;
-        saveSettings();
-      });
-      color.addEventListener('change', () => {
-        line.color = color.value;
+        Object.assign(line, { price: target === price ? price.valueAsNumber : line.price, color: color.value, showOnGrid: grid.checked });
         saveSettings();
       });
       remove.addEventListener('click', () => {
@@ -266,7 +266,7 @@ export function setupIndicatorSettings(dialog) {
     if (priceLines.length >= MAX_PRICE_LINES) {
       return;
     }
-    selectedLine = { price: nextPrice(priceLines), color: COLORS.priceLine };
+    selectedLine = { price: nextPrice(priceLines), color: COLORS.priceLine, showOnGrid: true };
     priceLines.push(selectedLine);
     renderPriceRows();
     saveSettings();

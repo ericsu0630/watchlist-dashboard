@@ -133,8 +133,9 @@ export class Tile extends CandleSeries {
   setGridIndicators({ volume, rsi, rsiColor, gridIndicator, averages, priceLines }) {
     const showRsi = rsi && (!volume || gridIndicator === 'rsi');
     this.renderGridIndicators?.({
-      volume: volume && !showRsi, rsi: showRsi, rsiColor, priceLines,
+      volume: volume && !showRsi, rsi: showRsi, rsiColor,
       averages: averages.filter((average) => average.showOnGrid !== false),
+      priceLines: priceLines.filter((line) => line.showOnGrid !== false),
     });
   }
 
