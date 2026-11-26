@@ -64,6 +64,7 @@ Taiwan stocks and ETFs show a **D** badge at the bottom of the chart under each 
 ## Read the news
 
 Click **News** to see recent headlines for your watchlist. Filter by tab or symbol, then click a headline to open the story.
+Use **Charts** on the left to go back or **Refresh** on the right to check for new headlines.
 
 ## Back up or move your watchlist
 
