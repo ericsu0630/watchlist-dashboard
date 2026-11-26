@@ -420,9 +420,10 @@ main { padding: 10px 10px 32px; }
 @media (hover: none) { .remove { opacity: 1; } }
 
 .ident { min-width: 0; font-size: 12px; }
-.symbol-row { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.symbol-row { display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
 .ticker { flex: none; max-width: 100%; font: 700 23px/1.05 var(--num); letter-spacing: .01em; }
-.meta { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.meta { display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; }
+.meta .session { align-self: center; }
 .meta .exch { font-weight: 500; color: var(--ink-2); }
 .ident .name { margin-top: 3px; min-height: 1lh; color: var(--muted); }
 .ident :is(.ticker, .exch, .name) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
