@@ -24,6 +24,8 @@ import { accountRouter } from './lib/account-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotEnv(path.join(__dirname, '.env'));
+// The Mac app keeps its writable files outside the app bundle, so it reads a .env from the data folder too.
+if (process.env.PD_DATA_DIR) loadDotEnv(path.join(path.resolve(process.env.PD_DATA_DIR), '.env'));
 
 const DEMO = process.argv.includes('--demo') || process.env.DEMO === '1';
 const PORT = Number(process.env.PORT) || 3000;
