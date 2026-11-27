@@ -1,10 +1,12 @@
 # Watchlist
 
-Track stocks, ETFs, and crypto with candlestick charts and news in your browser.
+Track stocks, ETFs, and crypto with candlestick charts and news. Run it as an app on a Mac or Windows PC, or [from source](#run-it) in your browser.
 
 ![Watchlist grid with moving averages on the AAPL chart and RSI underneath](docs/screenshot.png)
 
 Screenshots use simulated prices.
+
+**Download** the [latest release](https://github.com/ericsu0630/watchlist-dashboard/releases/latest): `Watchlist-<version>-arm64.dmg` for a Mac or `Watchlist-<version>-win-x64.zip` for Windows. Then follow the steps for the [Mac app](#mac-app) or the [Windows app](#windows-app).
 
 ## Mac app
 
@@ -55,14 +57,14 @@ Build it on a Mac or on Windows after `npm install`. Both need Go 1.26 or newer.
 - **Mac.** Run `bash winapp/build.sh`. It also needs Xcode's command line tools. Install Go with `brew install go`. For Windows on Arm, run `WD_ARCH=arm64 bash winapp/build.sh`.
 - **Windows.** In PowerShell, run `powershell -ExecutionPolicy Bypass -File winapp\build.ps1`. Install Go with `winget install GoLang.Go`. For Windows on Arm, add `-Arch arm64`.
 
-Each script downloads the Windows Node.js that matches the Node.js on your `PATH` once, checks it against the release checksums, and writes `Watchlist-<version>-win-x64.zip` to `dist/`. Your `.env`, `data/` and git files are left out. The app isn't signed.
+Each script downloads the Windows Node.js that matches the Node.js on your `PATH` once, checks it against the release checksums, and writes `Watchlist-<version>-win-x64.zip` (or `-win-arm64.zip`) to `dist/`. Your `.env`, `data/` and git files are left out. The app isn't signed.
 
 ## Run it
 
 Install Node.js 20.19 or newer. Clone this repository or download and extract its ZIP. [Download Node.js](https://nodejs.org/en/download)
 
 - **macOS.** If you use Homebrew, run `brew install node`. Open Terminal in the folder that contains `package.json`.
-- **Windows.** Run the Windows Installer (`.msi`) for a Node.js LTS release. Open the folder that contains `package.json` in File Explorer, type `cmd` in the address bar, and press Enter.
+- **Windows.** Run the Windows Installer (`.msi`) for a Node.js LTS release, or run `winget install OpenJS.NodeJS.LTS`. Open the folder that contains `package.json` in File Explorer, type `cmd` in the address bar, and press Enter.
 
 Run these commands in the project folder.
 
