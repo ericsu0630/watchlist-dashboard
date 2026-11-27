@@ -65,3 +65,18 @@ func TestPortInUse(t *testing.T) {
 		t.Error("closed port reported busy")
 	}
 }
+
+func TestEdgeCandidates(t *testing.T) {
+	env := map[string]string{`ProgramFiles(x86)`: `C:\PF86`, `LOCALAPPDATA`: `C:\Users\me\AppData\Local`}
+	got := edgeCandidates(func(k string) string { return env[k] })
+	want := []string{
+		filepath.Join(`C:\PF86`, "Microsoft", "Edge", "Application", "msedge.exe"),
+		filepath.Join(`C:\Users\me\AppData\Local`, "Microsoft", "Edge", "Application", "msedge.exe"),
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("edgeCandidates = %q, want %q", got, want)
+	}
+	if got := edgeCandidates(func(string) string { return "" }); len(got) != 0 {
+		t.Fatalf("with no environment, edgeCandidates = %q, want none", got)
+	}
+}

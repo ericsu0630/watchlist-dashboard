@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -60,6 +61,18 @@ func readDotEnv(path string) map[string]string {
 			v = v[1 : len(v)-1]
 		}
 		out[strings.TrimSpace(k)] = v
+	}
+	return out
+}
+
+// edgeCandidates lists where Microsoft Edge is usually installed, for when its App Paths registry
+// entry is missing. getenv is os.Getenv (a parameter so tests can pass their own).
+func edgeCandidates(getenv func(string) string) []string {
+	var out []string
+	for _, v := range []string{"ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"} {
+		if dir := getenv(v); dir != "" {
+			out = append(out, filepath.Join(dir, "Microsoft", "Edge", "Application", "msedge.exe"))
+		}
 	}
 	return out
 }

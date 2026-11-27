@@ -1,6 +1,7 @@
 //go:build windows
 
-// Watchlist.exe: a tray app that runs the bundled dashboard server with the bundled Node.
+// Watchlist.exe: a tray app that runs the bundled dashboard server with the bundled Node, and shows the
+// dashboard in its own window (Microsoft Edge's app mode).
 // Folder layout (made by winapp/build.sh):
 //
 //	Watchlist.exe       this program
@@ -100,7 +101,7 @@ func main() {
 		windows.CloseHandle(instance)
 		if b, err := os.ReadFile(filepath.Join(stateDir, "Watchlist.port")); err == nil {
 			if p, err := strconv.Atoi(strings.TrimSpace(string(b))); err == nil && portInUse(p) {
-				openURL(fmt.Sprintf("http://localhost:%d", p))
+				openWindow(fmt.Sprintf("http://localhost:%d", p))
 				return
 			}
 		}
@@ -140,7 +141,8 @@ func onReady() {
 	stateItem = systray.AddMenuItem("Starting…", "")
 	stateItem.Disable()
 	systray.AddSeparator()
-	openItem := systray.AddMenuItem("Open Dashboard", "Open the dashboard in your browser")
+	openItem := systray.AddMenuItem("Open Dashboard", "Open the dashboard in its own window")
+	browserItem := systray.AddMenuItem("Open in Browser", "Open the dashboard in your default browser")
 	restartItem := systray.AddMenuItem("Restart Server", "Stop and start the server, for example after editing .env")
 	systray.AddSeparator()
 	loginItem = systray.AddMenuItemCheckbox("Start at Login", "Start Watchlist when you sign in to Windows", startsAtLogin())
@@ -151,6 +153,8 @@ func onReady() {
 		for {
 			select {
 			case <-openItem.ClickedCh:
+				openWindow(fmt.Sprintf("http://localhost:%d", srv.currentPort()))
+			case <-browserItem.ClickedCh:
 				openURL(fmt.Sprintf("http://localhost:%d", srv.currentPort()))
 			case <-restartItem.ClickedCh:
 				go srv.restart()
@@ -323,7 +327,7 @@ func (s *server) waitUntilListening(gen int, done chan struct{}, port int, note 
 		marker := filepath.Join(stateDir, "opened-once")
 		if _, err := os.Stat(marker); errors.Is(err, os.ErrNotExist) {
 			_ = os.WriteFile(marker, nil, 0o644)
-			openURL(fmt.Sprintf("http://localhost:%d", port))
+			openWindow(fmt.Sprintf("http://localhost:%d", port))
 		}
 		return
 	}
@@ -406,6 +410,45 @@ func toggleLogin() {
 	} else {
 		loginItem.Uncheck()
 	}
+}
+
+// openWindow shows the dashboard in a window of its own: Microsoft Edge's app mode, with no tabs or
+// address bar. Edge comes with Windows 10 and 11; if it can't be found or started, the default browser opens.
+func openWindow(url string) {
+	if edge := findEdge(); edge != "" {
+		cmd := exec.Command(edge, "--app="+url)
+		if err := cmd.Start(); err == nil {
+			go cmd.Wait() // Edge often hands the window to a running Edge and exits straight away
+			return
+		}
+	}
+	openURL(url)
+}
+
+func findEdge() string {
+	const appPath = `SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe`
+	for _, root := range []registry.Key{registry.CURRENT_USER, registry.LOCAL_MACHINE} {
+		k, err := registry.OpenKey(root, appPath, registry.QUERY_VALUE)
+		if err != nil {
+			continue
+		}
+		v, _, err := k.GetStringValue("")
+		k.Close()
+		if p := strings.Trim(v, `"`); err == nil && isFile(p) {
+			return p
+		}
+	}
+	for _, p := range edgeCandidates(os.Getenv) {
+		if isFile(p) {
+			return p
+		}
+	}
+	return ""
+}
+
+func isFile(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && !fi.IsDir()
 }
 
 func openURL(url string) {
