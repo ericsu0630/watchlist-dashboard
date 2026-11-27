@@ -25,6 +25,28 @@ Click the menu bar icon to open the dashboard, restart the server, turn **Start 
 
 Run `bash macapp/build.sh` on an Apple Silicon Mac after `npm install`. It needs Xcode's command line tools. It bundles the Node.js on your `PATH` (or `WD_NODE=/path/to/node`) and writes `Watchlist.app` and the `.dmg` to `dist/`. Your `.env`, `data/` and git files are left out. The app has an ad-hoc signature and isn't notarized.
 
+## Windows app
+
+`Watchlist.exe` runs the dashboard from the notification area (system tray), with nothing else to install. It needs 64-bit Windows 10 or 11.
+
+1. Download `Watchlist-<version>-win-x64.zip` from the [latest release](https://github.com/ericsu0630/watchlist-dashboard/releases/latest).
+2. Right-click the zip and choose **Extract All**. Move the **Watchlist** folder wherever you like, for example your Documents folder. Don't run the app from inside the zip.
+3. Open the folder and double-click **Watchlist.exe**. The app isn't signed, so Windows may show "Windows protected your PC" the first time. Click **More info**, then **Run anyway**.
+4. A chart icon appears in the notification area and the dashboard opens in your browser. If you can't see the icon, click the **^** arrow next to the clock. You can drag the icon onto the taskbar to keep it visible.
+
+Click the icon to open the dashboard, restart the server, turn **Start at Login** on or off, or quit. Quit also stops the server. Opening `Watchlist.exe` again while it's running opens the dashboard.
+
+- **Address.** The dashboard runs at [http://localhost:3000](http://localhost:3000). If port 3000 is busy, the app picks the next free port and shows it at the top of the menu.
+- **This PC only.** The dashboard isn't locked, so the app only accepts connections from this PC.
+- **Your files.** Accounts and settings are in `%APPDATA%\Watchlist`. Server output goes to `%LOCALAPPDATA%\Watchlist\Watchlist.log`. Paste either path into the File Explorer address bar to open it. Nothing is written to the app folder.
+- **Settings.** To change a [setting](#settings) or add a [TradingView login](#tradingview-login-optional), put a `.env` file in `%APPDATA%\Watchlist`, then choose **Restart Server**. In Notepad, set **Save as type** to **All files** so the name stays `.env`. For example, `HOST=0.0.0.0` opens the dashboard to your local network. Windows Firewall then asks whether to allow it.
+- **Start at Login.** This adds Watchlist to your Windows startup apps. If you move the folder, turn it off and on again.
+- **Update or remove.** Quit Watchlist, then replace or delete the folder. Your files in `%APPDATA%\Watchlist` stay.
+
+### Build the Windows app
+
+Run `bash winapp/build.sh` on a Mac after `npm install`. It needs Go 1.26 or newer (`brew install go`) and Xcode's command line tools. It downloads the Windows Node.js that matches the Node.js on your `PATH` once, checks it against the release checksums, and writes `Watchlist-<version>-win-x64.zip` to `dist/`. Your `.env`, `data/` and git files are left out. For Windows on Arm, run `WD_ARCH=arm64 bash winapp/build.sh`. The app isn't signed.
+
 ## Run it
 
 Install Node.js 20.19 or newer. Clone this repository or download and extract its ZIP. [Download Node.js](https://nodejs.org/en/download)
@@ -132,4 +154,4 @@ The Node.js server (`server.js` and `lib/`) fetches data and serves the browser 
 
 The app connects to TradingView through an unofficial community library. [TradingView-API](https://github.com/Mathieu2301/TradingView-API)
 
-Accounts and sync are in `lib/accounts.js` and `lib/account-routes.js` on the server, and `public/app/account.js` in the page. The macOS menu bar app for a cloned repo is in `menubar/`. The standalone `Watchlist.app` and its build script are in `macapp/`.
+Accounts and sync are in `lib/accounts.js` and `lib/account-routes.js` on the server, and `public/app/account.js` in the page. The macOS menu bar app for a cloned repo is in `menubar/`. The standalone `Watchlist.app` and its build script are in `macapp/`. The Windows tray app (`Watchlist.exe`, written in Go) and its build script are in `winapp/`.
