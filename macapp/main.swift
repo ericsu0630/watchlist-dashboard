@@ -1,4 +1,5 @@
-// Watchlist.app: a menu bar app that runs the bundled dashboard server with the bundled Node.
+// Watchlist.app: a menu bar app that runs the bundled dashboard server with the bundled Node,
+// and shows the dashboard in its own window (dashboard.swift).
 // Bundle layout (made by macapp/build.sh):
 //   Contents/MacOS/Watchlist      this program
 //   Contents/MacOS/node           Node.js runtime
@@ -60,8 +61,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var server: Process?
     private var port = 3000
     private var restarting = false
+    private let dashboard = DashboardWindow()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.mainMenu = makeMainMenu(reloadTarget: dashboard) // shown only while the dashboard window is open
         if let button = statusItem.button {
             let image = NSImage(systemSymbolName: "chart.line.uptrend.xyaxis", accessibilityDescription: "Watchlist")
             image?.isTemplate = true
@@ -76,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(stateItem)
         menu.addItem(.separator())
         menu.addItem(item("Open Dashboard", #selector(openDashboard), "o"))
+        menu.addItem(item("Open in Browser", #selector(openInBrowser), ""))
         menu.addItem(item("Restart Server", #selector(restartServer), "r"))
         menu.addItem(.separator())
         loginItem = item("Start at Login", #selector(toggleLogin), "")
@@ -88,6 +92,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         stopServer()
+    }
+
+    /// Opening the app again while it runs (from Finder, Launchpad or Spotlight) shows the dashboard.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openDashboard()
+        return false
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -158,7 +168,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    /// Polls the port until the server answers, then updates the menu (and opens the dashboard on first launch).
+    /// Polls the port until the server answers, then updates the menu and an open dashboard window
+    /// (and opens the window on first launch).
     private func waitUntilListening(_ p: Process, note: String, tries: Int = 60) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self, self.server === p, p.isRunning else { return }
@@ -167,6 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return
             }
             self.setState("Running on :\(self.port)\(note)")
+            self.dashboard.serverReady(port: self.port)
             let key = "openedOnce"
             if !UserDefaults.standard.bool(forKey: key) {
                 UserDefaults.standard.set(true, forKey: key)
@@ -189,6 +201,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openDashboard() {
+        dashboard.show(port: port)
+    }
+
+    @objc private func openInBrowser() {
         NSWorkspace.shared.open(URL(string: "http://localhost:\(port)")!)
     }
 

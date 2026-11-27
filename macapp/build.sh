@@ -27,7 +27,7 @@ echo "Building Watchlist $VERSION with Node $("$NODE" -v)…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
 
-swiftc -O -target arm64-apple-macos13.0 "$HERE/main.swift" -o "$APP/Contents/MacOS/Watchlist"
+swiftc -O -target arm64-apple-macos13.0 "$HERE/main.swift" "$HERE/dashboard.swift" -o "$APP/Contents/MacOS/Watchlist"
 # Node keeps its own (Node.js Foundation, notarized) signature.
 cp "$NODE" "$APP/Contents/MacOS/node"
 
