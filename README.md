@@ -6,6 +6,25 @@ Track stocks, ETFs, and crypto with candlestick charts and news in your browser.
 
 Screenshots use simulated prices.
 
+## Mac app
+
+`Watchlist.app` runs the dashboard from the menu bar, with nothing else to install. It needs a Mac with Apple Silicon (M1 or later) and macOS 13 or newer.
+
+1. Open `Watchlist-<version>-arm64.dmg` and drag **Watchlist** to **Applications**.
+2. Open Watchlist from Applications. The app isn't notarized by Apple, so macOS blocks it the first time. Click **Done**, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Watchlist message. Confirm with your password.
+3. A chart icon appears in the menu bar and the dashboard opens in your browser.
+
+Click the menu bar icon to open the dashboard, restart the server, turn **Start at Login** on or off, or quit. Quit also stops the server.
+
+- **Address.** The dashboard runs at [http://localhost:3000](http://localhost:3000). If port 3000 is busy, the app picks the next free port and shows it at the top of the menu.
+- **This Mac only.** The dashboard isn't locked, so the app only accepts connections from this Mac.
+- **Your files.** Accounts and settings are in `~/Library/Application Support/Watchlist`. Server output goes to `~/Library/Logs/Watchlist.log`.
+- **Settings.** To change a [setting](#settings) or add a [TradingView login](#tradingview-login-optional), put a `.env` file in `~/Library/Application Support/Watchlist`, then choose **Restart Server**. For example, `HOST=0.0.0.0` opens the dashboard to your local network.
+
+### Build the Mac app
+
+Run `bash macapp/build.sh` on an Apple Silicon Mac after `npm install`. It needs Xcode's command line tools. It bundles the Node.js on your `PATH` (or `WD_NODE=/path/to/node`) and writes `Watchlist.app` and the `.dmg` to `dist/`. Your `.env`, `data/` and git files are left out. The app has an ad-hoc signature and isn't notarized.
+
 ## Run it
 
 Install Node.js 20.19 or newer. Clone this repository or download and extract its ZIP. [Download Node.js](https://nodejs.org/en/download)
@@ -113,4 +132,4 @@ The Node.js server (`server.js` and `lib/`) fetches data and serves the browser 
 
 The app connects to TradingView through an unofficial community library. [TradingView-API](https://github.com/Mathieu2301/TradingView-API)
 
-Accounts and sync are in `lib/accounts.js` and `lib/account-routes.js` on the server, and `public/app/account.js` in the page. The macOS menu bar app is in `menubar/`.
+Accounts and sync are in `lib/accounts.js` and `lib/account-routes.js` on the server, and `public/app/account.js` in the page. The macOS menu bar app for a cloned repo is in `menubar/`. The standalone `Watchlist.app` and its build script are in `macapp/`.
