@@ -10,7 +10,7 @@ Screenshots use simulated prices.
 
 `Watchlist.app` runs the dashboard from the menu bar, with nothing else to install. It needs a Mac with Apple Silicon (M1 or later) and macOS 13 or newer.
 
-1. Open `Watchlist-<version>-arm64.dmg` and drag **Watchlist** to **Applications**.
+1. Download `Watchlist-<version>-arm64.dmg` from the [latest release](https://github.com/ericsu0630/watchlist-dashboard/releases/latest). Open it and drag **Watchlist** to **Applications**.
 2. Open Watchlist from Applications. The app isn't notarized by Apple, so macOS blocks it the first time. Click **Done**, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Watchlist message. Confirm with your password.
 3. A chart icon appears in the menu bar and the dashboard opens in your browser.
 
