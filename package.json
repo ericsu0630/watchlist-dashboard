@@ -1,6 +1,6 @@
 {
   "name": "portfolio-dashboard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local investment watchlist dashboard: TradingView data + Lightweight Charts",
   "main": "server.js",
   "scripts": {
