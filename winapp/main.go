@@ -2,7 +2,7 @@
 
 // Watchlist.exe: a tray app that runs the bundled dashboard server with the bundled Node, and shows the
 // dashboard in its own window (Microsoft Edge's app mode).
-// Folder layout (made by winapp/build.sh):
+// Folder layout (made by winapp/build.sh or winapp/build.ps1):
 //
 //	Watchlist.exe       this program
 //	node\node.exe       Node.js runtime

@@ -50,7 +50,12 @@ Click the icon to open the dashboard, open it in your browser instead, restart t
 
 ### Build the Windows app
 
-Run `bash winapp/build.sh` on a Mac after `npm install`. It needs Go 1.26 or newer (`brew install go`) and Xcode's command line tools. It downloads the Windows Node.js that matches the Node.js on your `PATH` once, checks it against the release checksums, and writes `Watchlist-<version>-win-x64.zip` to `dist/`. Your `.env`, `data/` and git files are left out. For Windows on Arm, run `WD_ARCH=arm64 bash winapp/build.sh`. The app isn't signed.
+Build it on a Mac or on Windows after `npm install`. Both need Go 1.26 or newer.
+
+- **Mac.** Run `bash winapp/build.sh`. It also needs Xcode's command line tools. Install Go with `brew install go`. For Windows on Arm, run `WD_ARCH=arm64 bash winapp/build.sh`.
+- **Windows.** In PowerShell, run `powershell -ExecutionPolicy Bypass -File winapp\build.ps1`. Install Go with `winget install GoLang.Go`. For Windows on Arm, add `-Arch arm64`.
+
+Each script downloads the Windows Node.js that matches the Node.js on your `PATH` once, checks it against the release checksums, and writes `Watchlist-<version>-win-x64.zip` to `dist/`. Your `.env`, `data/` and git files are left out. The app isn't signed.
 
 ## Run it
 
@@ -159,4 +164,4 @@ The Node.js server (`server.js` and `lib/`) fetches data and serves the browser 
 
 The app connects to TradingView through an unofficial community library. [TradingView-API](https://github.com/Mathieu2301/TradingView-API)
 
-Accounts and sync are in `lib/accounts.js` and `lib/account-routes.js` on the server, and `public/app/account.js` in the page. The macOS menu bar app for a cloned repo is in `menubar/`. The standalone `Watchlist.app` and its build script are in `macapp/`. The Windows tray app (`Watchlist.exe`, written in Go) and its build script are in `winapp/`.
+Accounts and sync are in `lib/accounts.js` and `lib/account-routes.js` on the server, and `public/app/account.js` in the page. The macOS menu bar app for a cloned repo is in `menubar/`. The standalone `Watchlist.app` and its build script are in `macapp/`. The Windows tray app (`Watchlist.exe`, written in Go) and its build scripts are in `winapp/`.
