@@ -12,9 +12,12 @@ Screenshots use simulated prices.
 
 1. Download `Watchlist-<version>-arm64.dmg` from the [latest release](https://github.com/ericsu0630/watchlist-dashboard/releases/latest). Open it and drag **Watchlist** to **Applications**.
 2. Open Watchlist from Applications. The app isn't notarized by Apple, so macOS blocks it the first time. Click **Done**, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Watchlist message. Confirm with your password.
-3. A chart icon appears in the menu bar and the dashboard opens in your browser.
+3. A chart icon appears in the menu bar and the dashboard opens in its own window.
 
-Click the menu bar icon to open the dashboard, restart the server, turn **Start at Login** on or off, or quit. Quit also stops the server.
+Click the menu bar icon to open the dashboard, open it in your browser instead, restart the server, turn **Start at Login** on or off, or quit. Quit also stops the server.
+
+- **The window.** Watchlist shows in the Dock while its window is open. Closing the window keeps the server running in the menu bar. Opening Watchlist again from Applications brings the window back. **Quit Watchlist** (Cmd+Q) quits the whole app and stops the server. News stories open in your browser.
+- **Your board.** The window keeps its own board, separate from your browser's. To bring your board over, [sync with an account](#sync-with-an-account) or use **⋮ → Export** in the browser and **⋮ → Import…** in the window.
 
 - **Address.** The dashboard runs at [http://localhost:3000](http://localhost:3000). If port 3000 is busy, the app picks the next free port and shows it at the top of the menu.
 - **This Mac only.** The dashboard isn't locked, so the app only accepts connections from this Mac.
@@ -32,9 +35,11 @@ Run `bash macapp/build.sh` on an Apple Silicon Mac after `npm install`. It needs
 1. Download `Watchlist-<version>-win-x64.zip` from the [latest release](https://github.com/ericsu0630/watchlist-dashboard/releases/latest).
 2. Right-click the zip and choose **Extract All**. Move the **Watchlist** folder wherever you like, for example your Documents folder. Don't run the app from inside the zip.
 3. Open the folder and double-click **Watchlist.exe**. The app isn't signed, so Windows may show "Windows protected your PC" the first time. Click **More info**, then **Run anyway**.
-4. A chart icon appears in the notification area and the dashboard opens in your browser. If you can't see the icon, click the **^** arrow next to the clock. You can drag the icon onto the taskbar to keep it visible.
+4. A chart icon appears in the notification area and the dashboard opens in its own window. If you can't see the icon, click the **^** arrow next to the clock. You can drag the icon onto the taskbar to keep it visible.
 
-Click the icon to open the dashboard, restart the server, turn **Start at Login** on or off, or quit. Quit also stops the server. Opening `Watchlist.exe` again while it's running opens the dashboard.
+Click the icon to open the dashboard, open it in your browser instead, restart the server, turn **Start at Login** on or off, or quit. Quit also stops the server. Opening `Watchlist.exe` again while it's running opens the dashboard.
+
+- **The window.** The window is Microsoft Edge in app mode, without tabs or an address bar. Edge comes with Windows; without it, the dashboard opens in your default browser. Closing the window keeps the server running. Quitting from the icon stops the server but leaves an open window behind, so close it too.
 
 - **Address.** The dashboard runs at [http://localhost:3000](http://localhost:3000). If port 3000 is busy, the app picks the next free port and shows it at the top of the menu.
 - **This PC only.** The dashboard isn't locked, so the app only accepts connections from this PC.
