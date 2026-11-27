@@ -395,6 +395,12 @@ function sendRaw(ws, raw) {
   if (ws.readyState === 1) ws.send(raw);
 }
 
+// ws re-emits the HTTP server's errors, so a busy port surfaces here.
+wss.on('error', (err) => {
+  if (err.code !== 'EADDRINUSE') throw err;
+  console.error(`\n  Port ${PORT} is already in use. Stop the other server or set PORT to a free port.\n`);
+  process.exit(2);
+});
 server.listen(PORT, HOST, () => {
   console.log(`\n  Portfolio dashboard running at http://localhost:${PORT}${DEMO ? '  (demo data)' : ''}\n`);
 });
