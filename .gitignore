@@ -4,3 +4,4 @@ node_modules/
 menubar/WatchlistMenu
 data/
 dist/
+winapp/*.syso
